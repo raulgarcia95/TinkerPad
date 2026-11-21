@@ -1,7 +1,7 @@
 # Tinker Pad
 
 **Úsala en el navegador:** https://raulgarcia95.github.io/TinkerPad/  
-**App para tablet Android (APK):** [descarrega/TinkerPad.apk](descarrega/TinkerPad.apk)
+**App para tablet Android (APK):** [descarga directa](https://raulgarcia95.github.io/TinkerPad/descarrega/TinkerPad.apk) (ábrelo en la tableta; desde la lista de archivos de GitHub, usa el botón «Download raw file»)
 
 Reacciones en cadena sobre un panel perforado de madera de 170 × 100 cm (navegador, PC y tablet). Three.js para el 3D y Rapier 2D para la física, que solo actúa en el plano del panel.
 
@@ -101,7 +101,7 @@ La zona docente pide una clave (en el código solo está su huella SHA-256; píd
 
 ## App para tablet (APK)
 
-[descarrega/TinkerPad.apk](descarrega/TinkerPad.apk): Android 7 o superior, funciona sin internet (lleva dentro Three.js, Rapier, jsPDF, PDF.js y las fuentes). Para instalarla, permite «instalar aplicaciones de origen desconocido». Los PDF se guardan en Descargas/TinkerPad.
+[Descarga directa del APK](https://raulgarcia95.github.io/TinkerPad/descarrega/TinkerPad.apk): Android 7 o superior, funciona sin internet (lleva dentro Three.js, Rapier, jsPDF, PDF.js y las fuentes). Para instalarla, permite «instalar aplicaciones de origen desconocido». Los PDF se guardan en Descargas/TinkerPad. Cada versión nueva se instala encima de la anterior. Si una tableta ya tenía una versión antigua y Android no la deja actualizar, desinstálala primero.
 
 ## Probar desde la consola
 
