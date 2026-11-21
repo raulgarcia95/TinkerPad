@@ -123,9 +123,10 @@
   const bandera = (codi) => `<svg class="pt-bandera" viewBox="0 0 30 20" aria-hidden="true">${BANDERA[codi]}</svg>`;
   let menuObert = false;
 
-  /** Barra superior: zona docente (izquierda), sonido e idioma (derecha). */
+  /** Barra superior: zona docente (izquierda), borrar el progreso (en medio), sonido e idioma (derecha). */
   const barraSuperior = () => `<div class="pt-dalt">
       ${vista === "docent" || vista === "clau" ? "<span></span>" : `<button class="pt-docent-dalt" data-docent>${ICONO.docent}<span>${t("zonaDocent")}</span></button>`}
+      ${vista === "inici" ? `<button class="pt-esborrar-boto" data-esborrar>${ICONO.paperera}<span>${t("esborrar")}</span></button>` : ""}
       <div class="pt-dalt-dreta">
         <button class="pt-globus pt-so" data-so aria-pressed="${TK.audio.silenciat()}" aria-label="${t("silenci")}" title="${t("silenci")}">${TK.iconoSo(TK.audio.silenciat())}</button>
         ${selectorIdioma()}
@@ -160,8 +161,7 @@
         <button class="pt-boto" data-lliure="panell">${ICONO.panell}<span>${t("tallerLliure")}<small>${t("alPanell")}</small></span></button>
         <button class="pt-boto taula" data-lliure="taula">${ICONO.taula}<span>${t("tallerLliure")}<small>${t("aLaTaula")}</small></span></button>
         <button class="pt-boto tut" data-tut>${ICONO.ma}<span>${t("tutBoto")}<small>${t("tutSub")}</small></span></button>
-      </div>
-      <div class="pt-esborrar"><button class="pt-esborrar-boto" data-esborrar>${ICONO.paperera}<span>${t("esborrar")}</span></button></div>${peu()}`;
+      </div>${peu()}`;
   }
 
   function targetaReto([r, k]) {
@@ -297,21 +297,40 @@
     if ("so" in b.dataset) { TK.audio.alternar(); return pintar(); }
     if ("veure" in b.dataset) return document_(b).veure();
     if ("baixar" in b.dataset) return descarregar(b, document_(b).baixar);
-    if ("esborrar" in b.dataset) {
-      // Doble toque para confirmar: no se borra por accidente
-      if (b.dataset.confirmar) {
-        TK.Progres.esborrar();
-        b.textContent = t("esborrat"); b.disabled = true;
-        if (opciones.alEsborrar) opciones.alEsborrar(); // las marcas de la barra de retos también
-        // En la portada, las barras de progreso vuelven a cero
-        if (vista === "inici") setTimeout(pintar, 900);
-        return;
-      }
-      b.dataset.confirmar = "1";
-      b.querySelector("span") ? (b.querySelector("span").textContent = t("confirmar")) : (b.textContent = t("confirmar"));
+    // Borrar el progreso: un aviso explica qué se borra y pide confirmarlo
+    if ("esborrar" in b.dataset) return obrirDialegEsborrar();
+    if ("esborrarNo" in b.dataset) return tancarDialeg();
+    if ("esborrarSi" in b.dataset) {
+      TK.Progres.esborrar();
+      if (opciones.alEsborrar) opciones.alEsborrar(); // las marcas de la barra de retos también
+      tancarDialeg();
+      pintar(); // las barras de progreso vuelven a cero
+      const avis = document.createElement("p");
+      avis.className = "pt-esborrat"; avis.setAttribute("role", "status"); avis.textContent = t("esborrat");
+      document.body.appendChild(avis);
+      setTimeout(() => avis.remove(), 2200);
     }
   }
 
+  /** Ventana de confirmación para borrar el progreso de todos los retos. */
+  function obrirDialegEsborrar() {
+    tancarDialeg();
+    const d = document.createElement("div");
+    d.className = "pt-dialeg-fons";
+    d.innerHTML = `<div class="pt-dialeg" role="alertdialog" aria-modal="true" aria-labelledby="pt-dialeg-t" aria-describedby="pt-dialeg-x">
+        <span class="pt-dialeg-icona">${ICONO.paperera}</span>
+        <h2 id="pt-dialeg-t">${t("esborrar")}</h2>
+        <p id="pt-dialeg-x">${t("esborrarAvis")}</p>
+        <div class="pt-dialeg-botons">
+          <button class="pt-boto petit" data-esborrar-no>${t("cancela")}</button>
+          <button class="pt-boto petit perill" data-esborrar-si>${t("esborrarSi")}</button>
+        </div></div>`;
+    // Fuera de la portada (para que el fondo oscuro cubra toda la pantalla)
+    d.addEventListener("click", alClic);
+    document.body.appendChild(d);
+    setTimeout(() => { const c = d.querySelector("[data-esborrar-no]"); if (c) c.focus(); }, 30);
+  }
+  function tancarDialeg() { document.querySelectorAll(".pt-dialeg-fons").forEach((d) => d.remove()); }
   function amagar() { el.hidden = true; }
 
   TK.Portada = {

@@ -479,3 +479,18 @@ Object.assign(TK.TEXTOS.fr.ui, {
  "tut2": "Fais glisser une pièce sur le panneau et fixe-la avec des chevilles dans ses trous.",
  "tut8": "Élastique, pince ou chaîne : choisis-la puis touche où l'accrocher (chevilles, bout d'une latte, deux engrenages)."
 });
+
+/* Netejar el tauler, esborrar el progrés i gomes només a espigues */
+Object.assign(TK.TEXTOS.fr.ui, {
+ "esborrar": "Effacer la progression",
+ "esborrarAvis": "Cela effacera la progression de tous les défis : aucun défi ne restera marqué comme réussi ou essayé. Veux-tu continuer ?",
+ "esborrarSi": "Oui, efface-la",
+ "cancela": "Annuler",
+ "netejaTauler": "Tout enlever et recommencer",
+ "netejaConfirma": "Touche encore pour enlever toutes les pièces et recommencer",
+ "netejaFet": "Panneau vidé : recommence !",
+ "faltaGoma": "Pose d'abord deux chevilles (ce peuvent être celles d'une latte ou d'un bloc) : l'élastique s'y accrochera",
+ "tocaGoma1": "Touche la cheville où accrocher l'élastique (ou le manche d'une pince)",
+ "tocaGoma2": "Touche maintenant l'autre cheville",
+ "noGoma": "L'élastique ne s'accroche qu'aux chevilles (même celles qui traversent les lattes et les blocs) ou au manche d'une pince"
+});

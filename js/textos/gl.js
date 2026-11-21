@@ -479,3 +479,18 @@ Object.assign(TK.TEXTOS.gl.ui, {
  "tut2": "Arrastra unha peza ata o taboleiro e crávaa con espigas nos seus buratos.",
  "tut8": "Goma, pinza ou cadea: escóllea e toca onde se engancha (espigas, a punta dun listón, dúas engrenaxes)."
 });
+
+/* Netejar el tauler, esborrar el progrés i gomes només a espigues */
+Object.assign(TK.TEXTOS.gl.ui, {
+ "esborrar": "Borrar o progreso",
+ "esborrarAvis": "Isto eliminará o progreso de todos os retos: ningún reto quedará marcado como superado nin intentado. Queres continuar?",
+ "esborrarSi": "Si, bórrao",
+ "cancela": "Cancelar",
+ "netejaTauler": "Quitalo todo e volver comezar",
+ "netejaConfirma": "Toca outra vez para quitar todas as pezas e comezar de novo",
+ "netejaFet": "Taboleiro limpo: volve comezar!",
+ "faltaGoma": "Primeiro pon dúas espigas (tamén poden ser as dun listón ou un bloque): a goma enganchará nelas",
+ "tocaGoma1": "Toca a espiga onde engancharás a goma (ou o mango dunha pinza)",
+ "tocaGoma2": "Agora toca a outra espiga",
+ "noGoma": "A goma só se engancha en espigas (tamén as que atravesan listóns e bloques) ou no mango dunha pinza"
+});

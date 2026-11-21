@@ -166,6 +166,18 @@ body.vista-mesa .repo { background: linear-gradient(#eef6f1, #dbeae1); border-ri
 .pt-esborrar-boto svg { width: 20px; height: 20px; }
 .pt-esborrar-boto[data-confirmar] { background: var(--rojo); color: #fff; box-shadow: 0 3px 0 #a8322a; }
 .pt-esborrar-boto:disabled { opacity: .6; }
+/* Confirmación para borrar el progreso */
+.pt-dialeg-fons { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(60, 35, 15, .45); animation: salto .16s ease-out; }
+.pt-dialeg { width: min(440px, 100%); background: var(--papel); border-radius: 22px; padding: 22px 22px 18px; text-align: center; box-shadow: 0 6px 0 #e2cfae, 0 20px 40px rgba(60, 35, 15, .35); }
+.pt-dialeg-icona { display: inline-grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; background: #fbe1dc; color: var(--rojo); }
+.pt-dialeg-icona svg { width: 28px; height: 28px; }
+.pt-dialeg h2 { margin: 10px 0 6px; font: 700 22px var(--display); color: var(--tinta); }
+.pt-dialeg p { margin: 0 0 18px; font: 500 17px/1.35 var(--display); color: var(--tinta-suave); }
+.pt-dialeg-botons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.pt-dialeg-botons .pt-boto { flex: 1 1 140px; justify-content: center; }
+.pt-boto.perill { background: var(--rojo); color: #fff; box-shadow: 0 4px 0 #a8322a; }
+.pt-esborrat { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 50; margin: 0; padding: 10px 18px; border-radius: 16px; background: var(--tinta); color: #fff; font: 600 16px var(--display); }
+@media (max-width: 640px) { .pt-dalt .pt-esborrar-boto span, .pt-docent-dalt span { font-size: 13px; } .pt-dalt .pt-esborrar-boto { padding: 6px 10px; } }
 /* Portada: botón del tutorial */
 .pt-boto.tut svg { color: #2f7fd8; }/* Guía de tinkering en la zona docente */
 .pt-guia { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding: 14px 16px; border-radius: 22px; background: #3a4a7a; color: #fff; box-shadow: 0 4px 0 #26315a; }
@@ -283,6 +295,8 @@ body.vista-mesa .repo { background: linear-gradient(#eef6f1, #dbeae1); border-ri
 .mando.reiniciar { width: 54px; height: 54px; background: var(--naranja); color: #fff; box-shadow: 0 5px 0 var(--naranja-osc); }
 .mando.reiniciar:active { box-shadow: 0 1px 0 var(--naranja-osc); }
 .mando.borrar { color: var(--rojo); }
+.mando.netejar { color: var(--rojo); }
+.mando.netejar.confirma { background: var(--rojo); color: #fff; animation: latido 1s ease-in-out infinite; }
 .mando:disabled { opacity: .35; cursor: default; }
 body.jugando .mando.reiniciar { animation: latido 1.4s ease-in-out infinite; }
 .separador { width: 3px; height: 38px; border-radius: 2px; background: #eadabf; }
@@ -381,6 +395,7 @@ body.vista-mesa .zoom { background: rgba(236, 246, 240, .95); }
       <button class="mando" id="btn-izq" data-i18n-aria="giraEsq" data-i18n-title="giraEsq"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 13.5A6.5 6.5 0 1 0 9 7.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M9.8 3.5 8.6 7.6l4.1 1.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="mando" id="btn-der" data-i18n-aria="giraDreta" data-i18n-title="giraDreta"><svg viewBox="0 0 24 24" aria-hidden="true" style="transform:scaleX(-1)"><path d="M6.5 13.5A6.5 6.5 0 1 0 9 7.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M9.8 3.5 8.6 7.6l4.1 1.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="mando borrar" id="btn-borrar" data-i18n-aria="treu" data-i18n-title="treu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13h9l1-13M10.3 10.5v5.5M13.7 10.5v5.5" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="mando netejar" id="btn-netejar" data-i18n-aria="netejaTauler" data-i18n-title="netejaTauler"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3.5 12.5 11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M10.6 9.4 14.6 13.4 12.6 20.5H5.8L3.5 14.6Z" fill="currentColor" opacity=".85"/><path d="M7.3 20.3 8.6 16.2M10.2 20.3 11 16.8" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg></button>
     </div>
     <nav class="niveles" id="niveles" data-i18n-aria="reptes" hidden></nav>
   </header>

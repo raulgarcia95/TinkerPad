@@ -479,3 +479,18 @@ Object.assign(TK.TEXTOS.eu.ui, {
  "tut2": "Arrastatu pieza bat panelera eta iltzatu ziriekin bere zuloetan.",
  "tut8": "Goma, pintza edo katea: aukeratu eta ukitu non lotzen den (ziriak, ohol baten muturra, bi engranaje)."
 });
+
+/* Netejar el tauler, esborrar el progrés i gomes només a espigues */
+Object.assign(TK.TEXTOS.eu.ui, {
+ "esborrar": "Ezabatu aurrerapena",
+ "esborrarAvis": "Honek erronka guztien aurrerapena ezabatuko du: ez da erronkarik geratuko gaindituta edo saiatuta bezala markatuta. Jarraitu nahi duzu?",
+ "esborrarSi": "Bai, ezabatu",
+ "cancela": "Utzi",
+ "netejaTauler": "Kendu dena eta hasi berriro",
+ "netejaConfirma": "Ukitu berriro pieza guztiak kendu eta berriro hasteko",
+ "netejaFet": "Panela garbi: hasi berriro!",
+ "faltaGoma": "Lehenik jarri bi ziri (ohol edo bloke batekoak ere izan daitezke): goma bertan lotuko da",
+ "tocaGoma1": "Ukitu goma lotuko duzun ziria (edo pintza baten kirtena)",
+ "tocaGoma2": "Orain ukitu beste ziria",
+ "noGoma": "Goma ziriei bakarrik lotzen zaie (oholak eta blokeak zeharkatzen dituztenei ere) edo pintza baten kirtenari"
+});

@@ -479,3 +479,18 @@ Object.assign(TK.TEXTOS.en.ui, {
  "tut2": "Drag a piece onto the board and fix it with pegs in its holes.",
  "tut8": "Band, clothespin or chain: choose it, then tap where it hooks on (pegs, the end of a plank, two gears)."
 });
+
+/* Netejar el tauler, esborrar el progrés i gomes només a espigues */
+Object.assign(TK.TEXTOS.en.ui, {
+ "esborrar": "Clear progress",
+ "esborrarAvis": "This will delete the progress of every challenge: none will be marked as completed or tried. Do you want to continue?",
+ "esborrarSi": "Yes, clear it",
+ "cancela": "Cancel",
+ "netejaTauler": "Remove everything and start again",
+ "netejaConfirma": "Tap again to remove every piece and start again",
+ "netejaFet": "Board cleared: start again!",
+ "faltaGoma": "First place two pegs (they can also be the pegs of a plank or a block): the band will hook onto them",
+ "tocaGoma1": "Tap the peg where the band will hook (or the handle of a clothespin)",
+ "tocaGoma2": "Now tap the other peg",
+ "noGoma": "A band only hooks onto pegs (also the ones going through planks and blocks) or onto a clothespin handle"
+});

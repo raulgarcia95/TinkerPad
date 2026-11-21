@@ -482,3 +482,18 @@ Object.assign(TK.TEXTOS.ca.ui, {
  "tut2": "Arrossega una peça fins al tauler i clava-la amb espigues als seus forats.",
  "tut8": "Goma, pinça o cadena: tria-la i toca on s'enganxa (espigues, la punta d'un llistó, dos engranatges)."
 });
+
+/* Netejar el tauler, esborrar el progrés i gomes només a espigues */
+Object.assign(TK.TEXTOS.ca.ui, {
+ "esborrar": "Esborra el progrés",
+ "esborrarAvis": "Això eliminarà el progrés de tots els reptes: cap repte quedarà marcat com a superat ni intentat. Vols continuar?",
+ "esborrarSi": "Sí, esborra'l",
+ "cancela": "Cancel·la",
+ "netejaTauler": "Treu-ho tot i torna a començar",
+ "netejaConfirma": "Toca un altre cop per treure totes les peces i començar de nou",
+ "netejaFet": "Tauler net: torna a començar!",
+ "faltaGoma": "Primer posa dues espigues (també poden ser les d'un llistó o un bloc): la goma s'hi enganxarà",
+ "tocaGoma1": "Toca l'espiga on enganxaràs la goma (o el mànec d'una pinça)",
+ "tocaGoma2": "Ara toca l'altra espiga",
+ "noGoma": "La goma només s'enganxa a espigues (també les que travessen llistons i blocs) o al mànec d'una pinça"
+});

@@ -30,9 +30,7 @@
      La rampa cóncava y los bloques son demasiado gruesos: no se pueden pinzar.
      Además, gomas (gatillo) y espigas, donde la pinza se clava por el muelle. */
   const AGARRE = { liston: "puntes", tubo: "boques", cono: "boca-alta" };
-  // Dónde se puede enganchar una goma además de las espigas: los agujeros de las
-  // piezas de madera (no los ejes de engranajes, poleas… que ya llevan espiga)
-  const FORATS = Object.fromEntries(Object.entries(TK.FORATS).filter(([t]) => !TK.PIEZAS[t].agujero));
+  // Además de las espigas, una goma se puede enganchar al mango de una pinza
   const MANGO_PINZA = [[64, 0]];
   const SOLAPE = 0.025; // las piezas pueden tocarse, pero no meterse una en otra más de 2,5 px
   const TOL_FORAT = 4;  // una espiga está "dentro" de un agujero de una pieza si sus centros distan ≤ 4 px
@@ -926,7 +924,9 @@
     const out = [];
     for (const r of estado.piezas) {
       if (!r.inst) continue;
-      const locales = esEspiga(r) ? [[0, 0]] : FORATS[r.tipo] || (r.tipo === "pinza" && !r.goma ? MANGO_PINZA : null);
+      // Una goma s'enganxa a espigues (també les que travessen un llistó o un bloc) o al mànec d'una pinça;
+      // un forat buit no la pot aguantar
+      const locales = esEspiga(r) ? [[0, 0]] : r.tipo === "pinza" && !r.goma ? MANGO_PINZA : null;
       if (!locales) continue;
       for (const [x, y] of locales) out.push({ host: r, local: { x, y }, ...aPanel(r, { x, y }) });
     }
@@ -1514,6 +1514,7 @@
     izq: document.getElementById("btn-izq"),
     der: document.getElementById("btn-der"),
     borrar: document.getElementById("btn-borrar"),
+    netejar: document.getElementById("btn-netejar"),
     pista: document.getElementById("btn-pista"),
     grans: document.getElementById("btn-grans"),
     modo: document.getElementById("modo"),
@@ -1879,6 +1880,28 @@
   ui.izq.addEventListener("click", () => rotar(estado.seleccion, -1));
   ui.der.addEventListener("click", () => rotar(estado.seleccion, 1));
   ui.borrar.addEventListener("click", () => borrar(estado.seleccion));
+  // Netejar el tauler: treu tot el que s'ha posat i torna a començar el repte (dos tocs)
+  let netejaPendent = null;
+  ui.netejar.addEventListener("click", () => {
+    TK.audio.activar();
+    if (!netejaPendent) {
+      ui.netejar.classList.add("confirma");
+      avisar(TK.t("netejaConfirma"), "bombilla", 3000);
+      netejaPendent = setTimeout(() => { netejaPendent = null; ui.netejar.classList.remove("confirma"); }, 3000);
+      return;
+    }
+    clearTimeout(netejaPendent);
+    netejaPendent = null;
+    ui.netejar.classList.remove("confirma");
+    acabarEnganche();
+    if (estado.jugando) reiniciar();
+    estado.piezas.forEach(quitarMalla);
+    estado.piezas = [];
+    delete estado.memoria[estado.nivel];
+    cargarNivel(estado.nivel, estado.variante);
+    TK.audio.clic();
+    avisar(TK.t("netejaFet"), "reiniciar");
+  });
   ui.pista.addEventListener("click", () => {
     estado.pista = !estado.pista;
     ui.pista.setAttribute("aria-pressed", String(estado.pista));
