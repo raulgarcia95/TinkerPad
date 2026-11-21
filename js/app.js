@@ -995,6 +995,9 @@
       const rueda = rec.inst.engranaje || otro.inst.engranaje;
       if (rueda) {
         const fija = rec.inst.engranaje ? otro : rec;
+        // Una espiga (que no sea su eje) no puede quedar debajo de la rueda ni entre
+        // sus dientes: al girar chocaría con ella. Cuenta el radio exterior de los dientes.
+        if (esEspiga(fija)) { if (distancia(fija, rueda) < rueda.r + 6 + 5) return otro; continue; }
         const forma = new R.Ball(rueda.r * 0.6 * S), centro = { x: TK.X(rueda.x), y: TK.Y(rueda.y) };
         for (const c of solidos(fija)) { const k = c.contactShape(forma, centro, 0, 0); if (k && k.distance < -SOLAPE) return otro; }
         continue;
