@@ -16,13 +16,14 @@
    ===================================================================== */
 (function () {
   /* ---------- Progreso ---------- */
+  // El progreso dura mientras la aplicación está abierta: cada vez que se abre
+  // se empieza de cero (en una tableta compartida, cada grupo empieza limpio).
+  // Se guarda en memoria; el progreso antiguo que quedase en el navegador se borra.
   const CLAVES = { superats: "tinkering-superados", intentats: "tinkering-intentats" };
-  function leer(clave) {
-    try { return JSON.parse(localStorage.getItem(clave) || "[]"); } catch (e) { return []; }
-  }
-  function escribir(clave, lista) {
-    try { localStorage.setItem(clave, JSON.stringify(lista)); } catch (e) { /* sin almacenamiento */ }
-  }
+  const memoria = { [CLAVES.superats]: [], [CLAVES.intentats]: [] };
+  try { localStorage.removeItem(CLAVES.superats); localStorage.removeItem(CLAVES.intentats); } catch (e) { /* sin almacenamiento */ }
+  const leer = (clave) => memoria[clave].slice();
+  function escribir(clave, lista) { memoria[clave] = lista.slice(); }
   TK.Progres = {
     superat: (id) => leer(CLAVES.superats).includes(id),
     intentat: (id) => leer(CLAVES.intentats).includes(id),
@@ -99,6 +100,7 @@
     estrella: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2.8 2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.4 6.3-.9z"/></svg>',
     llibre: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.2c2.9-.9 5.9-.8 8.2.9v13.4c-2.3-1.5-5.3-1.7-8.2-.9zM21 5.2c-2.9-.9-5.9-.8-8.2.9v13.4c2.3-1.5 5.3-1.7 8.2-.9z"/></svg>',
     ma: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10h.5V3.5a1.5 1.5 0 0 1 3 0V10h.5V5a1.5 1.5 0 0 1 3 0v8.5c0 4-2.7 7-6.5 7-2.6 0-4.3-1.2-5.6-3.3L4.2 13a1.5 1.5 0 0 1 2.5-1.6L8.5 14V11z"/></svg>',
+    paperera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15M9.5 6.5V4.5h5v2M6.5 6.5l1 13h9l1-13M10.3 10.5v5.5M13.7 10.5v5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     ull: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>',
     mon: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
   };
@@ -158,7 +160,8 @@
         <button class="pt-boto" data-lliure="panell">${ICONO.panell}<span>${t("tallerLliure")}<small>${t("alPanell")}</small></span></button>
         <button class="pt-boto taula" data-lliure="taula">${ICONO.taula}<span>${t("tallerLliure")}<small>${t("aLaTaula")}</small></span></button>
         <button class="pt-boto tut" data-tut>${ICONO.ma}<span>${t("tutBoto")}<small>${t("tutSub")}</small></span></button>
-      </div>${peu()}`;
+      </div>
+      <div class="pt-esborrar"><button class="pt-esborrar-boto" data-esborrar>${ICONO.paperera}<span>${t("esborrar")}</span></button></div>${peu()}`;
   }
 
   function targetaReto([r, k]) {
@@ -296,9 +299,16 @@
     if ("baixar" in b.dataset) return descarregar(b, document_(b).baixar);
     if ("esborrar" in b.dataset) {
       // Doble toque para confirmar: no se borra por accidente
-      if (b.dataset.confirmar) { TK.Progres.esborrar(); b.textContent = t("esborrat"); b.disabled = true; return; }
+      if (b.dataset.confirmar) {
+        TK.Progres.esborrar();
+        b.textContent = t("esborrat"); b.disabled = true;
+        if (opciones.alEsborrar) opciones.alEsborrar(); // las marcas de la barra de retos también
+        // En la portada, las barras de progreso vuelven a cero
+        if (vista === "inici") setTimeout(pintar, 900);
+        return;
+      }
       b.dataset.confirmar = "1";
-      b.textContent = t("confirmar");
+      b.querySelector("span") ? (b.querySelector("span").textContent = t("confirmar")) : (b.textContent = t("confirmar"));
     }
   }
 

@@ -468,3 +468,17 @@ Object.assign(TK.TEXTOS.ca.ui, {
  "tut11": "Aquí hi ha el repte; la Pista t'ajuda si t'encalles.",
  "tut12": "Amb la casa tornes a la portada."
 });
+
+/* Montaje con espigas, pinza clavada y gomas de tres medidas */
+Object.assign(TK.TEXTOS.ca.piezas, {"gomaPetita":"Goma petita","gomaGran":"Goma gran"});
+Object.assign(TK.TEXTOS.ca.ui, {
+ "posaEspigues": "Clava-la amb espigues als forats: sense espigues caurà quan premis ▶",
+ "unaEspiga": "Amb una sola espiga, la peça girarà com un pèndol fins que s'aguanti en alguna cosa. Amb dues, queda fixa.",
+ "duesEspigues": "Té dues espigues: treu-ne una per poder-la girar",
+ "pinzaSola": "Una pinça no es pot quedar a l'aire: clava-la en una espiga o fes que mossegui la punta d'un llistó",
+ "faltaPinza": "Primer posa una espiga, un llistó, un tub o un con: la pinça s'hi subjectarà",
+ "tocaPinza": "Toca una espiga (s'hi clava pel moll), la punta d'un llistó, la boca d'un tub, la vora d'un con o una goma",
+ "noPinza": "La pinça es clava en una espiga o mossega vores primes: la punta d'un llistó, la boca d'un tub, la vora d'un con o una goma",
+ "tut2": "Arrossega una peça fins al tauler i clava-la amb espigues als seus forats.",
+ "tut8": "Goma, pinça o cadena: tria-la i toca on s'enganxa (espigues, la punta d'un llistó, dos engranatges)."
+});

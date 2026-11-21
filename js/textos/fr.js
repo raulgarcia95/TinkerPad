@@ -465,3 +465,17 @@ Object.assign(TK.TEXTOS.fr.ui, {
  "tut11": "Voici le défi ; l'Indice t'aide si tu bloques.",
  "tut12": "La maison te ramène à l'accueil."
 });
+
+/* Montaje con espigas, pinza clavada y gomas de tres medidas */
+Object.assign(TK.TEXTOS.fr.piezas, {"gomaPetita":"Petit élastique","gomaGran":"Grand élastique"});
+Object.assign(TK.TEXTOS.fr.ui, {
+ "posaEspigues": "Fixe-la avec des chevilles dans ses trous : sans chevilles, elle tombera quand tu appuieras sur ▶",
+ "unaEspiga": "Avec une seule cheville, la pièce tourne comme un pendule jusqu'à s'appuyer sur quelque chose. Avec deux, elle reste fixe.",
+ "duesEspigues": "Elle a deux chevilles : enlèves-en une pour pouvoir la tourner",
+ "pinzaSola": "Une pince ne peut pas rester en l'air : enfile-la sur une cheville ou fais-lui pincer le bout d'une latte",
+ "faltaPinza": "Pose d'abord une cheville, une latte, un tube ou un cône : la pince s'y accrochera",
+ "tocaPinza": "Touche une cheville (la pince s'y enfile par le ressort), le bout d'une latte, l'entrée d'un tube, le bord d'un cône ou un élastique",
+ "noPinza": "La pince s'enfile sur une cheville ou pince des bords fins : le bout d'une latte, l'entrée d'un tube, le bord d'un cône ou un élastique",
+ "tut2": "Fais glisser une pièce sur le panneau et fixe-la avec des chevilles dans ses trous.",
+ "tut8": "Élastique, pince ou chaîne : choisis-la puis touche où l'accrocher (chevilles, bout d'une latte, deux engrenages)."
+});

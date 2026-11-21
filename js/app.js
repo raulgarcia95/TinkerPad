@@ -24,16 +24,20 @@
   // Dónde se enganchan las piezas que no se sostienen solas
   const ESPIGAS = ["espiga", "espigaLarga"];
   /* Dónde puede morder una pinza de verdad (bordes finos, menos de ~1,5 cm):
-       vores     listón plano: sus cantos largos y sus puntas
+       puntes    listón plano: solo sus puntas (no los cantos largos)
        boques    tubo de PVC: solo la boca (las puntas de sus paredes)
        boca-alta cono de alambre: solo el aro de arriba
      La rampa cóncava y los bloques son demasiado gruesos: no se pueden pinzar.
-     Además, espigas y gomas (ver anclajePinza y gatillo). */
-  const AGARRE = { liston: "vores", tubo: "boques", cono: "boca-alta" };
-  // Dónde se puede enganchar una goma además de las espigas (px locales de la pieza)
-  const FORATS = { liston: [[-100, 0], [100, 0]], canal: [[-100, 0], [100, 0]], bloque: [[-60, 0], [-20, 0], [20, 0], [60, 0]], cuna: [[30, 12]] };
+     Además, gomas (gatillo) y espigas, donde la pinza se clava por el muelle. */
+  const AGARRE = { liston: "puntes", tubo: "boques", cono: "boca-alta" };
+  // Dónde se puede enganchar una goma además de las espigas: los agujeros de las
+  // piezas de madera (no los ejes de engranajes, poleas… que ya llevan espiga)
+  const FORATS = Object.fromEntries(Object.entries(TK.FORATS).filter(([t]) => !TK.PIEZAS[t].agujero));
   const MANGO_PINZA = [[64, 0]];
   const SOLAPE = 0.025; // las piezas pueden tocarse, pero no meterse una en otra más de 2,5 px
+  const TOL_FORAT = 4;  // una espiga está "dentro" de un agujero de una pieza si sus centros distan ≤ 4 px
+  const MUELLE = 20;    // px de la punta de la pinza a su muelle (donde se clava en una espiga)
+  const IMAN = 12;      // px: al acercar un agujero a una espiga (o al revés), encajan solos
 
   const escenario = document.getElementById("escenario");
   const lienzo = document.getElementById("lienzo");
@@ -415,7 +419,10 @@
     ctx.mapa = new Map();
     eventos = new R.EventQueue(true);
     paredes();
-    estado.piezas.forEach(crearInst);
+    // Primero las espigas (las demás piezas cuelgan de ellas), luego las piezas
+    // y al final lo que se engancha a otras (gomas, pinzas, cadenas)
+    const orden = (r) => (esEspiga(r) ? 0 : TK.PIEZAS[r.tipo].engancha ? 2 : 1);
+    estado.piezas.slice().sort((p, q) => orden(p) - orden(q)).forEach(crearInst);
     alinearEngranajes();
     acumulado = 0;
     pasosSimulados = 0;
@@ -426,7 +433,8 @@
   /* ---------- Engranajes ---------- */
   /** Busca parejas que engranan y alinea los dientes visualmente. */
   function alinearEngranajes() {
-    const ruedas = estado.piezas.filter((r) => r.inst && r.inst.engranaje).map((r) => r.inst);
+    // Una rueda sin espiga (suelta) no engrana: cae
+    const ruedas = estado.piezas.filter((r) => r.inst && r.inst.engranaje && !r.inst.engranaje.suelto).map((r) => r.inst);
     paresEngranaje = [];
     const vecinos = new Map(ruedas.map((i) => [i, []]));
     for (let a = 0; a < ruedas.length; a++) for (let b = a + 1; b < ruedas.length; b++) {
@@ -439,7 +447,7 @@
       }
     }
     // Cadenas: unen dos ruedas que no se tocan (mismo sentido de giro)
-    paresCadena = estado.piezas.filter((r) => r.tipo === "cadena" && r.a.inst && r.b.inst && r.a.inst.engranaje && r.b.inst.engranaje)
+    paresCadena = estado.piezas.filter((r) => r.tipo === "cadena" && r.a.inst && r.b.inst && r.a.inst.engranaje && r.b.inst.engranaje && !r.a.inst.engranaje.suelto && !r.b.inst.engranaje.suelto)
       .map((r) => [r.a.inst, r.b.inst]);
     // Recorrido en anchura: cada rueda nueva se gira para que sus dientes
     // caigan en los huecos de la vecina (sa + sb = 0 se mantiene al girar).
@@ -500,11 +508,16 @@
     if (!c1 || !c2) return;
     const b1 = c1.parent(), b2 = c2.parent();
     const i1 = ctx.mapa.get(h1) || {}, i2 = ctx.mapa.get(h2) || {};
-    for (const [yo, otro] of [[i1, b2], [i2, b1]]) {
+    for (const [yo, otro, suyo] of [[i1, b2, i2], [i2, b1, i1]]) {
       if (!otro || !otro.isDynamic()) continue;
-      if (yo.etiqueta === "campana" || yo.etiqueta === "meta") alcanzarObjetivo(yo.pieza, yo.etiqueta);
+      // Una pieza que cae porque no tiene espigas no cuenta como objetivo conseguido
+      const q = suyo.pieza && suyo.pieza.p, cae = q && q.montaje && !q.montaje.fijo && !(q.montaje.n >= 1);
+      if ((yo.etiqueta === "campana" || yo.etiqueta === "meta") && !cae) alcanzarObjetivo(yo.pieza, yo.etiqueta);
       // Pinza-gatillo: se suelta si le cae algo que pese bastante
       if (yo.etiqueta === "gatillo" && yo.pieza.disparar && otro.mass() >= TK.GOMA.GATILLO) yo.pieza.disparar();
+      // Pinza: una bola que pese le abre la boca (el corcho no)
+      if ((yo.etiqueta === "boca" || yo.etiqueta === "mossega") && yo.pieza.tocar && otro.numColliders() === 1 && otro.collider(0).shapeType() === R.ShapeType.Ball)
+        yo.pieza.tocar(otro);
     }
     if (c1.isSensor() || c2.isSensor()) return;
     const v1 = b1 ? b1.linvel() : { x: 0, y: 0 }, v2 = b2 ? b2.linvel() : { x: 0, y: 0 };
@@ -550,7 +563,8 @@
     }
     // Condiciones del reto o de la variante (p. ej. "solo con 2 piezas")
     const c = condiciones();
-    const puestas = estado.piezas.filter((r) => r.puesta);
+    // Las espigas no cuentan: sirven para sujetar las demás piezas
+    const puestas = estado.piezas.filter((r) => r.puesta && !esEspiga(r));
     if (c.limite && puestas.length > c.limite) {
       avisar(TK.t("massaPeces", { n: puestas.length, m: c.limite }), "bombilla");
       return;
@@ -579,7 +593,8 @@
   /** Lo que se elige al final de la reflexión. */
   function accionReflexion(a) {
     ui.victoria.hidden = true;
-    if (a === "otra") { reiniciar(); setTimeout(jugar, 250); }
+    // Repetir: vuelve a montar el reto tal como estaba; se pone en marcha con Play
+    if (a === "otra") reiniciar();
     else if (a === "seguir") reiniciar();
     else if (a === "siguiente") {
       // Siguiente reto de la misma dificultad; al acabar la lista, a la portada
@@ -672,7 +687,8 @@
       : enganche && enganche.tipo === "pinza"
       ? estado.piezas.filter((r) => r.inst && (esEspiga(r) || (!enganche.goma && ((r.tipo in AGARRE) || (r.tipo === "goma" && !r.tensor)))))
       : [];
-    const errores = (estado.pista && !estado.jugando ? estado.piezas.filter((r) => r.error && r.inst) : []).concat(guia);
+    // Con la pista, en rojo: las piezas con error y las que caerán por no tener ninguna espiga
+    const errores = (estado.pista && !estado.jugando ? estado.piezas.filter((r) => r.inst && (r.error || sinEspigues(r))) : []).concat(guia);
     while (halosError.length < errores.length) {
       const m = new T.Mesh(geoHalo, matHaloError);
       m.position.z = 0.011;
@@ -703,9 +719,18 @@
     return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
   }
   const limitar = (v, min, max) => Math.min(max, Math.max(min, v));
-  /** Ajuste a la rejilla suave, o al agujero más cercano si la pieza va en un eje. */
-  function ajustar(tipo, x, y) {
+  /**
+   * Ajuste a la rejilla suave, o al agujero más cercano si la pieza va en un eje.
+   * Las piezas con agujeros (listones, bloques…) se colocan con el agujero de su
+   * punta más alta sobre un agujero del panel: ahí se le puede poner una espiga.
+   */
+  function ajustar(tipo, x, y, ang = 0) {
     if (TK.PIEZAS[tipo].agujero) return { x: limitar(TK.agujero(x), 10, TK.W - 10), y: limitar(TK.agujero(y), 10, TK.H - 10) };
+    const fs = TK.FORATS[tipo];
+    if (fs) {
+      const f = [fs[0], fs[fs.length - 1]].map(([fx, fy]) => TK.rot(fx, fy, ang || 0)).reduce((m, v) => (v.y < m.y - 0.01 ? v : m));
+      return { x: limitar(TK.agujero(x + f.x) - f.x, 20, TK.W - 20), y: limitar(TK.agujero(y + f.y) - f.y, 20, TK.H - 20) };
+    }
     const r = (v) => Math.round(v / TK.REJILLA) * TK.REJILLA;
     return { x: limitar(r(x), 20, TK.W - 20), y: limitar(r(y), 20, TK.H - 20) };
   }
@@ -729,7 +754,9 @@
   }
 
   function mover(rec, x, y) {
-    const a = ajustar(rec.tipo, x, y);
+    let a = ajustar(rec.tipo, x, y, rec.angulo);
+    // Imán: si un agujero de la pieza queda cerca de una espiga, encajan
+    if (esMuntable(rec) && !TK.PIEZAS[rec.tipo].agujero) a = imanPieza(rec, a.x, a.y) || a;
     if (a.x === rec.x && a.y === rec.y) return;
     rec.x = a.x; rec.y = a.y;
     actualizarPieza(rec);
@@ -739,11 +766,17 @@
   const puedeGirar = (rec) => TK.PIEZAS[rec.tipo].rotable && !(rec.tipo === "pinza" && rec.host && !esEspiga(rec.host));
   function rotar(rec, dir) {
     if (!rec || rec.fija || estado.jugando || !puedeGirar(rec)) return;
+    // Con una espiga en un agujero, la pieza gira sobre ella; con dos, no puede girar
+    const muntada = esMuntable(rec) && !TK.PIEZAS[rec.tipo].agujero ? espiguesDe(rec) : [];
+    if (muntada.length >= 2) { avisar(TK.t("duesEspigues"), "espiga", 3000); return; }
+    const eje = muntada[0], forat = eje && foratLocal(rec, eje);
     const antes = guardarPos(rec);
     rec.angulo =Math.round(((rec.angulo || 0) + dir * TK.PASO_GIRO) / TK.PASO_GIRO) * TK.PASO_GIRO;
     if (rec.angulo > Math.PI) rec.angulo -= 2 * Math.PI;
     if (rec.angulo <= -Math.PI) rec.angulo += 2 * Math.PI;
+    if (forat) { const h = aPanel(rec, forat); rec.x += eje.x - h.x; rec.y += eje.y - h.y; }
     if (rec.host) rec.local.ang = rec.angulo - (rec.host.angulo || 0);
+    if (rec.clavada) posarClavada(rec); // la pinza clavada gira sobre su muelle
     actualizarPieza(rec);
     actualizarDependientes(rec);
     if (solapa(rec)) { ponerPos(rec, antes); noCabe(rec); return; }
@@ -784,6 +817,110 @@
     const ha = host.angulo || 0, cs = Math.cos(ha), sn = Math.sin(ha);
     return { x: host.x + cs * l.x - sn * l.y, y: host.y + sn * l.x + cs * l.y };
   }
+  /* ---------- Montaje con espigas (ver TK.FORATS en piezas.js) ---------- */
+  const esMuntable = (r) => !!r && !!TK.FORATS[r.tipo];
+  /** Agujeros de una pieza en px del panel. */
+  const foratsDe = (rec) => (TK.FORATS[rec.tipo] || []).map(([x, y]) => aPanel(rec, { x, y }));
+  /** ¿La espiga e está metida en un agujero de la pieza r? */
+  const enForat = (e, r) => esEspiga(e) && esMuntable(r) && foratsDe(r).some((f) => distancia(f, e) <= TOL_FORAT);
+  /** Espigas metidas en los agujeros de la pieza. */
+  const espiguesDe = (rec) => estado.piezas.filter((e) => e !== rec && enForat(e, rec));
+  /** Punto local del agujero de la pieza donde está la espiga e. */
+  function foratLocal(rec, e) {
+    const k = foratsDe(rec).findIndex((f) => distancia(f, e) <= TOL_FORAT);
+    return k < 0 ? null : { x: TK.FORATS[rec.tipo][k][0], y: TK.FORATS[rec.tipo][k][1] };
+  }
+  /** Pieza que caerá al pulsar Play: se puede montar con espigas pero no tiene ninguna. */
+  const sinEspigues = (r) => esMuntable(r) && !r.fija && !espiguesDe(r).length;
+  /** Imán: posición de la pieza (en x, y) con su agujero más cercano encajado en una espiga. */
+  function imanPieza(rec, x, y) {
+    const prueba = { ...rec, x, y };
+    let mejor = null, dmin = IMAN;
+    for (const f of foratsDe(prueba)) for (const e of estado.piezas) {
+      if (!esEspiga(e)) continue;
+      const d = distancia(f, e);
+      if (d < dmin) { dmin = d; mejor = { x: x + e.x - f.x, y: y + e.y - f.y }; }
+    }
+    return mejor;
+  }
+  /** Al dejar una espiga cerca de un agujero de una pieza, la pieza se desliza hasta encajar. */
+  function encajarEspiga(e) {
+    let mejor = null, dmin = IMAN;
+    for (const r of estado.piezas) {
+      if (!esMuntable(r) || r.fija || TK.PIEZAS[r.tipo].agujero) continue;
+      for (const f of foratsDe(r)) { const d = distancia(f, e); if (d > 0.01 && d < dmin) { dmin = d; mejor = { r, dx: e.x - f.x, dy: e.y - f.y }; } }
+    }
+    if (!mejor) return;
+    const { r } = mejor, antes = guardarPos(r);
+    r.x += mejor.dx; r.y += mejor.dy;
+    actualizarPieza(r);
+    actualizarDependientes(r);
+    if (solapa(r)) ponerPos(r, antes);
+  }
+  /** Pinza clavada por el muelle en su espiga: la punta queda a MUELLE px según el ángulo. */
+  function posarClavada(rec) {
+    const h = rec.host, a = rec.angulo || 0;
+    rec.x = h.x - MUELLE * Math.cos(a);
+    rec.y = h.y - MUELLE * Math.sin(a);
+    rec.local = { x: rec.x - h.x, y: rec.y - h.y, ang: a - (h.angulo || 0) };
+  }
+  /** Espigas puestas en todos los agujeros de la pieza que caen en un agujero del panel. */
+  function espiguesPer(rec) {
+    return foratsDe(rec).filter((f) => Math.abs(TK.agujero(f.x) - f.x) < 0.5 && Math.abs(TK.agujero(f.y) - f.y) < 0.5)
+      .map((f) => ({ tipo: "espiga", x: TK.agujero(f.x), y: TK.agujero(f.y), angulo: 0, fija: false }));
+  }
+  /**
+   * Al pulsar Play: cómo queda sujeta cada pieza (rec.montaje, ver piezas.js).
+   * Tubos y conos quedan fijos si los atan dos gomas, o una goma y una espiga
+   * donde se apoyan; esas gomas (rec.lligam) ya no hacen de muelle.
+   */
+  function calcularMontaje() {
+    for (const r of estado.piezas) { delete r.montaje; delete r.lligam; }
+    for (const r of estado.piezas) {
+      if (r.fija || !r.inst) continue;
+      if (esMuntable(r)) {
+        const e = espiguesDe(r);
+        r.montaje = { n: e.length, eje: e[0] };
+        // Una espiga y otras que la tocan por los dos lados del giro: no puede girar, queda fija
+        if (e.length === 1 && !TK.PIEZAS[r.tipo].agujero && bloqueada(r, e[0])) r.montaje.fijo = true;
+      } else if (TK.APOYO.includes(r.tipo)) {
+        const gomas = estado.piezas.filter((g) => g.tipo === "goma" && !g.tensor && g.pa && gomaCreua(g, r));
+        gomas.forEach((g) => (g.lligam = true));
+        const recolzat = estado.piezas.some((e) => esEspiga(e) && seToquen(r, e));
+        r.montaje = { fijo: gomas.length >= 2 || (gomas.length >= 1 && recolzat) };
+      }
+    }
+  }
+  /**
+   * ¿La pieza, colgada de la espiga eje, tiene topes (espigas que la tocan, con
+   * menos de 5 px de holgura) que le impiden girar hacia los dos lados?
+   */
+  function bloqueada(r, eje) {
+    const piv = foratLocal(r, eje).x, a = r.angulo || 0, cs = Math.cos(a), sn = Math.sin(a);
+    const lados = new Set();
+    for (const e of estado.piezas) {
+      if (!esEspiga(e) || e === eje || enForat(e, r)) continue;
+      if (!solidos(r).some((c1) => solidos(e).some((c2) => { const k = c1.contactCollider(c2, 0.06); return k && k.distance < 0.05; }))) continue;
+      const dx = e.x - r.x, dy = e.y - r.y, lx = cs * dx + sn * dy, ly = -sn * dx + cs * dy;
+      if (Math.abs(lx - piv) > 1 && Math.abs(ly) > 1) lados.add(Math.sign(lx - piv) * Math.sign(ly));
+    }
+    return lados.size === 2;
+  }
+  /** ¿La goma pasa por encima de la pieza (la cruza)? */
+  function gomaCreua(g, r) {
+    const cols = solidos(r), n = Math.ceil(distancia(g.pa, g.pb) / 2);
+    for (let k = 1; k < n; k++) {
+      const q = { x: TK.X(g.pa.x + ((g.pb.x - g.pa.x) * k) / n), y: TK.Y(g.pa.y + ((g.pb.y - g.pa.y) * k) / n) };
+      if (cols.some((c) => c.containsPoint(q))) return true;
+    }
+    return false;
+  }
+  /** ¿Dos piezas se tocan (a menos de 2 px)? */
+  function seToquen(a, b) {
+    for (const c1 of solidos(a)) for (const c2 of solidos(b)) { const k = c1.contactCollider(c2, 0.03); if (k && k.distance < 0.02) return true; }
+    return false;
+  }
+
   /** Todos los puntos donde se puede enganchar una goma: espigas, agujeros y mangos de pinza. */
   function puntosGoma() {
     const out = [];
@@ -837,6 +974,9 @@
     if (otro === rec || !otro.inst || otro.tipo === "goma" || otro.tipo === "cadena") return true;
     if (rec.host === otro || otro.host === rec) return true;            // la pinza muerde esa pieza
     if (rec.host && rec.host === otro.host) return true;                 // dos pinzas en la misma espiga
+    if (enForat(rec, otro) || enForat(otro, rec)) return true;          // espiga metida en un agujero de la pieza
+    // Pinza clavada en una espiga que atraviesa una pieza: va por delante de ella
+    if ((rec.clavada && enForat(rec.host, otro)) || (otro.clavada && enForat(otro.host, rec))) return true;
     return false;
   }
   function solapa(rec) {
@@ -866,7 +1006,7 @@
     }
     return false;
   }
-  const guardarPos = (rec) => ({ x: rec.x, y: rec.y, angulo: rec.angulo, host: rec.host, local: rec.local ? { ...rec.local } : undefined });
+  const guardarPos = (rec) => ({ x: rec.x, y: rec.y, angulo: rec.angulo, host: rec.host, clavada: rec.clavada, local: rec.local ? { ...rec.local } : undefined });
   function ponerPos(rec, p) {
     Object.assign(rec, p, { local: p.local ? { ...p.local } : undefined });
     rec.choca = false;
@@ -879,7 +1019,7 @@
     for (let r = 0; r <= 480; r += 40) {
       const pasos = r ? Math.round((2 * Math.PI * r) / 40) : 1;
       for (let k = 0; k < pasos; k++) {
-        const a = (k / pasos) * 2 * Math.PI, p = ajustar(rec.tipo, x0 + r * Math.cos(a), y0 + r * Math.sin(a));
+        const a = (k / pasos) * 2 * Math.PI, p = ajustar(rec.tipo, x0 + r * Math.cos(a), y0 + r * Math.sin(a), rec.angulo);
         rec.x = p.x; rec.y = p.y;
         actualizarPieza(rec);
         if (!solapa(rec)) return true;
@@ -908,10 +1048,16 @@
     return mejor;
   }
 
-  /** Dónde mordería una pinza en este punto: una espiga o el borde de un listón. */
+  /**
+   * Dónde se sujetaría una pinza en este punto: clavada por el muelle en una
+   * espiga, o mordiendo la punta de un listón, la boca de un tubo o el aro de un cono.
+   */
   function anclajePinza(pt, anguloEspiga) {
     const espiga = espigaEn(pt);
-    if (espiga) return { host: espiga, x: espiga.x, y: espiga.y, angulo: anguloEspiga };
+    if (espiga) {
+      const a = anguloEspiga || 0;
+      return { host: espiga, clavada: true, x: espiga.x - MUELLE * Math.cos(a), y: espiga.y - MUELLE * Math.sin(a), angulo: a };
+    }
     const q = { x: TK.X(pt.x), y: TK.Y(pt.y) }, lim = (tolerancia + 6) * S;
     let mejor = null, dmin = Infinity;
     for (const r of estado.piezas) {
@@ -960,7 +1106,7 @@
   function fijarEnHost(rec, anc) {
     const h = anc.host, ha = h.angulo || 0, cs = Math.cos(ha), sn = Math.sin(ha);
     const dx = anc.x - h.x, dy = anc.y - h.y;
-    Object.assign(rec, { host: h, x: anc.x, y: anc.y, angulo: anc.angulo });
+    Object.assign(rec, { host: h, x: anc.x, y: anc.y, angulo: anc.angulo, clavada: !!anc.clavada });
     rec.local = { x: cs * dx + sn * dy, y: -sn * dx + cs * dy, ang: anc.angulo - ha };
   }
   /** Recoloca la pinza tras mover o girar la pieza que muerde. */
@@ -984,10 +1130,10 @@
       }
       if (r.tipo === "goma") {
         puntosDeGoma(r);
-        const d = distancia(r.pa, r.pb);
-        if (d > TK.GOMA.MAX || d < TK.GOMA.MIN || (r.tensor && !tiraValida(r, r.tensor.host))) {
+        const d = distancia(r.pa, r.pb), f = TK.gomaMida(r);
+        if (d > TK.GOMA.MAX * f || d < TK.GOMA.MIN * f || (r.tensor && !tiraValida(r, r.tensor.host))) {
           quitarRegistro(r);
-          avisar(TK.t(d < TK.GOMA.MIN ? "gomaCaiguda" : "gomaSaltada"), "goma");
+          avisar(TK.t(d < TK.GOMA.MIN * f ? "gomaCaiguda" : "gomaSaltada"), "goma");
           continue;
         }
         actualizarPieza(r);
@@ -1010,11 +1156,25 @@
     const t = ((e.x - g.pa.x) * dx + (e.y - g.pa.y) * dy) / (l * l);
     const h = Math.abs((e.x - g.pa.x) * dy - (e.y - g.pa.y) * dx) / l;
     if (t < 0.1 || t > 0.9 || h < 24) return "gatillLinia";
-    if (distancia(e, g.pa) + distancia(e, g.pb) > TK.GOMA.TIRA) return "gomaLluny";
+    if (distancia(e, g.pa) + distancia(e, g.pb) > TK.GOMA.TIRA * TK.gomaMida(g)) return "gomaLluny";
     return null;
   }
   const tiraValida = (g, e) => !motivoTira(g, e);
 
+  /** Tras dejar una pieza: la espiga encaja en el agujero cercano; avisos sobre cómo se sujeta. */
+  let avisosEspiga = 0, avisUna = false;
+  function colocada(rec) {
+    if (esEspiga(rec)) {
+      encajarEspiga(rec);
+      if (!avisUna && estado.piezas.some((q) => !q.fija && enForat(rec, q) && !TK.PIEZAS[q.tipo].agujero && espiguesDe(q).length === 1)) {
+        avisUna = true;
+        avisar(TK.t("unaEspiga"), "espiga", 4000);
+      }
+    } else if (sinEspigues(rec) && avisosEspiga < 3) {
+      avisosEspiga++;
+      avisar(TK.t("posaEspigues"), "espiga", 3500);
+    }
+  }
   function nuevaPieza(rec) {
     estado.piezas.push(rec);
     crearInst(rec);
@@ -1023,18 +1183,19 @@
     return rec;
   }
   /** Crea una goma entre dos puntos de enganche {host, local, x, y} (o explica por qué no se puede). */
-  function crearGoma(A, B) {
+  function crearGoma(A, B, mida = 1) {
     const d = distancia(A, B);
-    if (d > TK.GOMA.MAX) { avisar(TK.t("gomaLluny"), "goma"); return null; }
-    if (d < TK.GOMA.MIN) { avisar(TK.t("gomaAprop"), "goma"); return null; }
+    if (d > TK.GOMA.MAX * mida) { avisar(TK.t("gomaLluny"), "goma"); return null; }
+    if (d < TK.GOMA.MIN * mida) { avisar(TK.t("gomaAprop"), "goma"); return null; }
     if (estado.piezas.some((r) => r.tipo === "goma" && r.pa && ((distancia(r.pa, A) < 4 && distancia(r.pb, B) < 4) || (distancia(r.pa, B) < 4 && distancia(r.pb, A) < 4)))) {
       avisar(TK.t("gomaRepetida"), "goma");
       return null;
     }
     const rec = { tipo: "goma", a: A.host, la: { ...A.local }, b: B.host, lb: { ...B.local }, angulo: 0, fija: false, puesta: true };
+    if (mida !== 1) rec.mida = mida;
     puntosDeGoma(rec);
     nuevaPieza(rec);
-    const tension = d / TK.GOMA.L0;
+    const tension = d / (TK.GOMA.L0 * mida);
     avisar(TK.t(tension <= 1 ? "gomaFluixa" : tension < 1.6 ? "gomaTensa" : "gomaMoltTensa"), "goma");
     return rec;
   }
@@ -1091,7 +1252,9 @@
 
   /* Modo enganche: tras escoger goma o pinza en el repositorio, se toca el panel */
   let enganche = null; // { tipo, a } (a = primera espiga de la goma)
-  const fantasmaGoma = TK.mallaGoma(), fantasmaPinza = TK.mallaPinza();
+  let fantasmaGoma = TK.mallaGoma();
+  const fantasmaPinza = TK.mallaPinza();
+  fantasmaGoma.mida = 1;
   fantasmaPinza.abrir(1);
   fantasmaGoma.raiz.visible = fantasmaPinza.raiz.visible = false;
   escena.add(fantasmaGoma.raiz, fantasmaPinza.raiz);
@@ -1108,12 +1271,13 @@
     if (tipo === "cadena") return estado.piezas.filter((r) => TK.radiEngranatge(r.tipo)).length >= 2;
     return estado.piezas.some((r) => esEspiga(r) || (r.tipo in AGARRE) || r.tipo === "goma");
   }
-  function empezarEnganche(tipo) {
+  /** tipo: goma, pinza o cadena; ficha: la pieza del repositorio (gomaPetita, goma, gomaGran…). */
+  function empezarEnganche(tipo, ficha = tipo) {
     if (!hayDondeEnganchar(tipo)) { avisar(textoEnganche(tipo).falta, "espiga", 3500); return false; }
-    enganche = { tipo, a: null };
+    enganche = { tipo, a: null, ficha, mida: TK.PIEZAS[ficha].mida || 1 };
     seleccionar(null);
     avisar(textoEnganche(tipo).toca, "mano", Infinity);
-    ui.repo.querySelectorAll(".ficha").forEach((f) => f.classList.toggle("activa", f.dataset.tipo === tipo));
+    ui.repo.querySelectorAll(".ficha").forEach((f) => f.classList.toggle("activa", f.dataset.tipo === ficha));
     return true;
   }
   function acabarEnganche() {
@@ -1140,9 +1304,9 @@
       const punto = puntoGomaEn(pt, enganche.a);
       if (!punto) { avisar(enganche.a && puntoGomaEn(pt) ? TK.t("altraEspiga") : t.no, "espiga", Infinity); return; }
       if (!enganche.a) { enganche.a = punto; TK.audio.clic(); avisar(t.otra, "mano", Infinity); moverEnganche(pt); return; }
-      const a = enganche.a;
+      const a = enganche.a, mida = enganche.mida;
       acabarEnganche();
-      crearGoma(a, punto);
+      crearGoma(a, punto, mida);
     } else if (enganche.goma) {
       // Segundo toque del tirachinas: la espiga donde se apoya la pinza
       const e = espigaEn(pt);
@@ -1170,6 +1334,12 @@
     if (enganche.tipo === "goma") {
       if (!enganche.a) return;
       const fin = puntoGomaEn(pt, enganche.a) || pt;
+      if (fantasmaGoma.mida !== enganche.mida) { // vista previa con la medida escogida
+        escena.remove(fantasmaGoma.raiz);
+        fantasmaGoma = TK.mallaGoma(enganche.mida);
+        fantasmaGoma.mida = enganche.mida;
+        escena.add(fantasmaGoma.raiz);
+      }
       fantasmaGoma.dibujar({ x: TK.X(enganche.a.x), y: TK.Y(enganche.a.y) }, { x: TK.X(fin.x), y: TK.Y(fin.y) });
       fantasmaGoma.raiz.visible = true;
     } else {
@@ -1193,7 +1363,7 @@
   let pellizco = null, esperarDedos = false, primerDedoPieza = null;
   function empezarPellizco() {
     // El primer dedo había empezado a mover una pieza: vuelve a su sitio
-    if (arrastre) { ponerPos(arrastre.rec, arrastre.inicial); if (arrastre.rec.tipo === "pinza" && arrastre.rec.inst) arrastre.rec.inst.abrir(0); arrastre = null; }
+    if (arrastre) { arrastre.rec.flota = false; ponerPos(arrastre.rec, arrastre.inicial); if (arrastre.rec.tipo === "pinza" && arrastre.rec.inst) arrastre.rec.inst.abrir(0); arrastre = null; }
     if (manivela) { manivela.girando = false; manivela = null; }
     const [a, b] = [...dedos.values()];
     pellizco = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, z0: vista.zoom, m: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
@@ -1263,10 +1433,21 @@
     lienzo.setPointerCapture(e.pointerId);
     lienzo.style.cursor = "grabbing";
   });
-  /** Arrastrar una pinza: muerde la espiga o el borde más cercano al dedo. */
+  /**
+   * Arrastrar una pinza: va abierta siguiendo el dedo y se sujeta en la espiga
+   * o la punta más cercana. Si se suelta en el aire, vuelve a su último sitio
+   * (una pinza nunca queda suelta).
+   */
   function moverPinza(rec, pt) {
-    const anc = anclajePinza(pt, esEspiga(rec.host) ? rec.angulo : 0);
-    if (!anc || (anc.host === rec.host && Math.abs(anc.x - rec.x) < 1 && Math.abs(anc.y - rec.y) < 1)) return;
+    const anc = anclajePinza(pt, rec.clavada ? rec.angulo : 0);
+    if (!anc) {
+      Object.assign(rec, { x: pt.x, y: pt.y, flota: true });
+      actualizarPieza(rec);
+      rec.inst.abrir(1);
+      return;
+    }
+    if (!rec.flota && anc.host === rec.host && Math.abs(anc.x - rec.x) < 1 && Math.abs(anc.y - rec.y) < 1) return;
+    rec.flota = false;
     fijarEnHost(rec, anc);
     actualizarPieza(rec);
     actualizarDependientes(rec);
@@ -1287,6 +1468,7 @@
       const r = arrastre.rec;
       if (r.tipo === "pinza") moverPinza(r, { x, y });
       else mover(r, x, y);
+      if (r.flota) { r.choca = false; return; }
       r.choca = solapa(r);
       if (!r.choca) arrastre.valida = guardarPos(r);
       return;
@@ -1298,9 +1480,13 @@
   });
   const soltar = () => {
     if (arrastre) TK.audio.clic();
+    const r = arrastre && arrastre.rec;
+    // Pinza soltada en el aire: vuelve a la última espiga o punta donde estaba sujeta
+    if (r && r.flota) { r.flota = false; ponerPos(r, arrastre.valida); avisar(TK.t("pinzaSola"), "bombilla", 3000); }
     // Si al soltarla se cruza con otra pieza, vuelve al último sitio libre
-    if (arrastre && arrastre.rec.choca) { ponerPos(arrastre.rec, arrastre.valida); noCabeAviso(); }
-    if (arrastre && arrastre.rec.tipo === "pinza" && arrastre.rec.inst) arrastre.rec.inst.abrir(0);
+    else if (r && r.choca) { ponerPos(r, arrastre.valida); noCabeAviso(); }
+    else if (r) colocada(r);
+    if (r && r.tipo === "pinza" && r.inst) r.inst.abrir(0);
     arrastre = null;
     if (manivela) { manivela.girando = false; manivela = null; }
     lienzo.style.cursor = "default";
@@ -1352,10 +1538,11 @@
     if (estado.jugando) { avisar(TK.t("tornaMuntarAvis"), "reiniciar"); return; }
     const tipo = ficha.dataset.tipo;
     // Goma y pinza no se sostienen solas: se enganchan a espigas o bordes
-    if (TK.PIEZAS[tipo].engancha) {
-      if (enganche && enganche.tipo === tipo) { acabarEnganche(); return; }
+    const eng = TK.PIEZAS[tipo].engancha;
+    if (eng) {
+      if (enganche && enganche.ficha === tipo) { acabarEnganche(); return; }
       acabarEnganche();
-      if (empezarEnganche(tipo)) { nueva = { tipo, x0: e.clientX, y0: e.clientY, enganche: true, movido: false }; setTimeout(tancarCaixa, 0); }
+      if (empezarEnganche(eng, tipo)) { nueva = { tipo, x0: e.clientX, y0: e.clientY, enganche: true, movido: false }; setTimeout(tancarCaixa, 0); }
       return;
     }
     acabarEnganche();
@@ -1373,7 +1560,7 @@
     }
     const pt = sobreLienzo(e) && puntoPanel(e);
     if (pt && !nueva.rec) {
-      const def = TK.PIEZAS[nueva.tipo], a = ajustar(nueva.tipo, pt.x, pt.y);
+      const def = TK.PIEZAS[nueva.tipo], a = ajustar(nueva.tipo, pt.x, pt.y, def.angulo0);
       nueva.rec = { tipo: nueva.tipo, x: a.x, y: a.y, angulo: def.angulo0 || 0, fija: false, puesta: true };
       estado.piezas.push(nueva.rec);
       crearInst(nueva.rec);
@@ -1401,7 +1588,7 @@
     }
     if (!n.movido) {
       // Toque sin arrastrar: la pieza aparece en el centro del panel
-      const def = TK.PIEZAS[n.tipo], a = ajustar(n.tipo, TK.W / 2, 360);
+      const def = TK.PIEZAS[n.tipo], a = ajustar(n.tipo, TK.W / 2, 360, def.angulo0);
       const rec = { tipo: n.tipo, x: a.x, y: a.y, angulo: def.angulo0 || 0, fija: false, puesta: true };
       estado.piezas.push(rec);
       crearInst(rec);
@@ -1409,6 +1596,7 @@
       alinearEngranajes();
       seleccionar(rec);
       TK.audio.clic();
+      colocada(rec);
       return;
     }
     if (!n.rec) return;
@@ -1420,6 +1608,7 @@
       }
       seleccionar(n.rec);
       TK.audio.clic();
+      colocada(n.rec);
     } else { quitarRegistro(n.rec); alinearEngranajes(); seleccionar(null); }
   });
 
@@ -1429,6 +1618,9 @@
     TK.audio.activar();
     acabarEnganche();
     seleccionar(null);
+    // Cómo queda sujeta cada pieza (espigas, gomas): se calcula en el mundo de montaje
+    calcularMontaje();
+    ctx.jugando = true;
     reconstruir();
     estado.jugando = true;
     estado.superado = false;
@@ -1443,6 +1635,8 @@
     ui.victoria.hidden = true;
     document.getElementById("tarjeta-reto").classList.remove("superado");
     document.body.classList.remove("jugando");
+    ctx.jugando = false;
+    for (const r of estado.piezas) { delete r.montaje; delete r.lligam; }
     reconstruir();
     actualizarMandos();
   }
@@ -1451,8 +1645,8 @@
   /** Copia del montaje para guardarlo; los enganches se guardan como índices. */
   function copiarMontaje(lista) {
     const idx = (r) => (r ? lista.indexOf(r) : undefined);
-    return lista.map(({ tipo, x, y, angulo, fija, error, bola, contrapeso, puesta, a, b, host, local, la, lb, pa, pb, goma, tensor, mida }) => ({
-      tipo, x, y, angulo, fija, error, bola, contrapeso, puesta, mida,
+    return lista.map(({ tipo, x, y, angulo, fija, error, bola, contrapeso, puesta, a, b, host, local, la, lb, pa, pb, goma, tensor, mida, clavada }) => ({
+      tipo, x, y, angulo, fija, error, bola, contrapeso, puesta, mida, clavada,
       a: idx(a), b: idx(b), host: idx(host), goma: idx(goma), tensor: idx(tensor),
       local: local ? { ...local } : undefined, la, lb, pa, pb,
     }));
@@ -1489,7 +1683,9 @@
       if (c.mover) { const p = fijas.find((q) => q.tipo === c.mover.tipo); if (p) Object.assign(p, { x: c.mover.x, y: c.mover.y }); }
       estado.piezas = [...fijas.map((p) => desdeReto(p, true)), ...(r.piezas || []).map((p) => desdeReto(p, false))];
     } else if (n === -2) {
-      estado.piezas = [desdeReto({ tipo: "lanzador", x: 160, y: TK.H / 2, bola: "canica" }, false), desdeReto({ tipo: "campana", x: TK.W - 210, y: TK.H / 2 }, false)];
+      // El lanzador del taller de mesa ya viene sujeto con dos espigas
+      const lanzador = desdeReto({ tipo: "lanzador", x: 170, y: TK.agujero(TK.H / 2), bola: "canica" }, false);
+      estado.piezas = [lanzador, ...espiguesPer(lanzador), desdeReto({ tipo: "campana", x: TK.W - 210, y: TK.H / 2 }, false)];
     } else {
       estado.piezas = [desdeReto({ tipo: "salida", x: 130, y: 150, bola: "corcho" }, false), desdeReto({ tipo: "campana", x: TK.W - 210, y: TK.H - 240 }, false)];
     }
@@ -1557,7 +1753,10 @@
   function pintarRepo() {
     const r = reto(), pista = estado.pista && r && !estado.variante ? r.pista : {};
     const c = condiciones();
-    const vale = (t) => (!c.sin || !c.sin.includes(t)) && (!c.solo || c.solo.includes(t)) && !(esMesa() && TK.NO_MESA.includes(t));
+    // Las espigas siempre se pueden usar (todo se sujeta con ellas); las gomas de
+    // otras medidas valen donde vale la goma
+    const base = (t) => (TK.PIEZAS[t].engancha === "goma" ? "goma" : t);
+    const vale = (t) => ESPIGAS.includes(t) || ((!c.sin || !c.sin.includes(base(t))) && (!c.solo || c.solo.includes(base(t))) && !(esMesa() && TK.NO_MESA.includes(t)));
     const cats = TK.CATEGORIAS.filter((cat) => !(r && cat.soloLibre)).map((cat) => ({ ...cat, tipos: cat.piezas.filter(vale) })).filter((cat) => cat.tipos.length);
     if (estado.categoria === undefined || (estado.categoria !== null && !cats.some((cat) => cat.id === estado.categoria))) estado.categoria = null;
     // La pista abre la primera categoría con piezas sugeridas
@@ -1715,17 +1914,7 @@
       estado.memoria = {};
       cargarNivel(k);
       const r = TK.RETOS[k];
-      if (conSolucion) for (const s of r.solucion || []) {
-        if (s.goma) this.goma(s.goma);
-        else if (s.cadena) this.cadena(s.cadena);
-        else if (s.gatillo) this.gatillo(s.gatillo, s.angulo);
-        else if (s.desde) { // arreglar una pieza ya puesta: moverla, girarla o quitarla
-          const rec = estado.piezas.find((q) => q.x === s.desde[0] && q.y === s.desde[1]);
-          if (s.quitar) borrar(rec);
-          else { Object.assign(rec, { x: s.x ?? rec.x, y: s.y ?? rec.y, angulo: s.angulo !== undefined ? (s.angulo * Math.PI) / 180 : rec.angulo }); actualizarPieza(rec); }
-        } else if (s.tipo === "pinza") this.pinza(s.x, s.y, s.angulo || 0);
-        else this.colocar(s.tipo, s.x, s.y, s.angulo || 0, s.extra);
-      }
+      if (conSolucion) this.montarSolucio(r.solucion);
       jugar();
       if (r.manivela && conSolucion) this.girarManivela(true);
       for (let i = 0; i < maxPasos; i++) { pasoFisica(); if (estado.superado) { const p = i; reiniciar(); return p; } }
@@ -1744,17 +1933,7 @@
       try {
         delete estado.memoria[k];
         cargarNivel(k);
-        if (conSolucion) for (const s of TK.RETOS[k].solucion || []) {
-          if (s.goma) this.goma(s.goma);
-          else if (s.cadena) this.cadena(s.cadena);
-          else if (s.gatillo) this.gatillo(s.gatillo, s.angulo);
-          else if (s.desde) {
-            const rec = estado.piezas.find((q) => q.x === s.desde[0] && q.y === s.desde[1]);
-            if (s.quitar) borrar(rec);
-            else { Object.assign(rec, { x: s.x ?? rec.x, y: s.y ?? rec.y, angulo: s.angulo !== undefined ? (s.angulo * Math.PI) / 180 : rec.angulo }); actualizarPieza(rec); }
-          } else if (s.tipo === "pinza") this.pinza(s.x, s.y, s.angulo || 0);
-          else this.colocar(s.tipo, s.x, s.y, s.angulo || 0, s.extra);
-        }
+        if (conSolucion) this.montarSolucio(TK.RETOS[k].solucion);
         seleccionar(null);
         for (const rec of estado.piezas) rec.inst.sync();
         actualizarHalos();
@@ -1775,19 +1954,35 @@
         marcarIntentado = marca;
       }
     },
+    /** Monta una solución de retos.js sobre el reto cargado (ver el formato allí). */
+    montarSolucio(lista) {
+      for (const s of lista || []) {
+        if (s.goma) this.goma(s.goma, s.mida);
+        else if (s.cadena) this.cadena(s.cadena);
+        else if (s.gatillo) this.gatillo(s.gatillo, s.angulo);
+        else if (s.desde) { // arreglar una pieza ya puesta: moverla, girarla o quitarla
+          const rec = estado.piezas.find((q) => q.x === s.desde[0] && q.y === s.desde[1] && (!s.tipo || q.tipo === s.tipo));
+          if (s.quitar) borrar(rec);
+          else { Object.assign(rec, { x: s.x ?? rec.x, y: s.y ?? rec.y, angulo: s.angulo !== undefined ? (s.angulo * Math.PI) / 180 : rec.angulo }); actualizarPieza(rec); }
+        } else if (s.tipo === "pinza") this.pinza(s.x, s.y, s.angulo || 0);
+        else this.colocar(s.tipo, s.x, s.y, s.angulo || 0, s.extra);
+      }
+    },
+    /** Pone una pieza. Las posiciones de las soluciones son exactas (sus agujeros caen sobre espigas). */
     colocar(tipo, x, y, grados, extra) {
-      const a = ajustar(tipo, x, y);
+      const a = TK.PIEZAS[tipo].agujero ? ajustar(tipo, x, y) : { x, y };
       const rec = { tipo, x: a.x, y: a.y, angulo: ((grados ?? 0) * Math.PI) / 180, fija: false, puesta: true, ...extra };
       estado.piezas.push(rec);
       crearInst(rec);
       alinearEngranajes();
       return rec;
     },
+    espiguesDe, sinEspigues, foratsDe, colocada,
     /** Goma entre los puntos de enganche más cercanos a (x1, y1) y (x2, y2). */
-    goma([x1, y1, x2, y2]) {
+    goma([x1, y1, x2, y2], mida = 1) {
       const P = puntosGoma(), cerca = (x, y) => P.find((p) => Math.abs(p.x - x) < 5 && Math.abs(p.y - y) < 5);
       const A = cerca(x1, y1), B = cerca(x2, y2);
-      return A && B ? crearGoma(A, B) : null;
+      return A && B ? crearGoma(A, B, mida) : null;
     },
     /** Cadena entre los engranajes de (x1, y1) y (x2, y2). */
     cadena([x1, y1, x2, y2]) {
@@ -1831,6 +2026,7 @@
   TK.Portada.iniciar({
     jugar: (k) => cargarNivel(k),
     lliure: (mesa) => cargarNivel(mesa ? -2 : -1),
+    alEsborrar: () => pintarNiveles(),
     miniaturas,
   });
   TK.Portada.mostrar();

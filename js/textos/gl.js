@@ -465,3 +465,17 @@ Object.assign(TK.TEXTOS.gl.ui, {
  "tut11": "Aquí está o reto; a Pista axúdache se te atascas.",
  "tut12": "Coa casa volves á portada."
 });
+
+/* Montaje con espigas, pinza clavada y gomas de tres medidas */
+Object.assign(TK.TEXTOS.gl.piezas, {"gomaPetita":"Goma pequena","gomaGran":"Goma grande"});
+Object.assign(TK.TEXTOS.gl.ui, {
+ "posaEspigues": "Crávaa con espigas nos buratos: sen espigas caerá ao premer ▶",
+ "unaEspiga": "Cunha soa espiga, a peza xirará coma un péndulo ata apoiarse nalgo. Con dúas, queda fixa.",
+ "duesEspigues": "Ten dúas espigas: quita unha para poder xirala",
+ "pinzaSola": "Unha pinza non pode quedar no aire: crávaa nunha espiga ou fai que morda a punta dun listón",
+ "faltaPinza": "Primeiro pon unha espiga, un listón, un tubo ou un cono: a pinza suxeitarase aí",
+ "tocaPinza": "Toca unha espiga (crávase polo resorte), a punta dun listón, a boca dun tubo, o bordo dun cono ou unha goma",
+ "noPinza": "A pinza crávase nunha espiga ou morde bordos finos: a punta dun listón, a boca dun tubo, o bordo dun cono ou unha goma",
+ "tut2": "Arrastra unha peza ata o taboleiro e crávaa con espigas nos seus buratos.",
+ "tut8": "Goma, pinza ou cadea: escóllea e toca onde se engancha (espigas, a punta dun listón, dúas engrenaxes)."
+});

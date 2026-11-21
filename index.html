@@ -34,18 +34,18 @@ button { font: inherit; color: inherit; }
    Cada categoría es una caja; al tocarla se abre una bandeja con sus piezas
    (por encima del tablero, sin cambiar su tamaño). */
 .app { grid-template-rows: auto minmax(0, 1fr); }
-.caixes { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; display: flex; flex-direction: column; gap: 10px; width: 104px; }
+.caixes { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 116px; }
 .caixes-esq { left: max(10px, env(safe-area-inset-left, 0px)); }
 .caixes-dre { right: max(10px, env(safe-area-inset-right, 0px)); }
 .caixa { position: relative; border: 0; padding: 0; cursor: pointer; background: none; touch-action: manipulation; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .caixa-cos { position: relative; width: 96px; height: 62px; border-radius: 6px 6px 10px 10px; overflow: visible;
   background: repeating-linear-gradient(180deg, #d9a35e 0 17px, #b98244 17px 19px), #d9a35e; box-shadow: inset 0 0 0 3px #9a6a35, 0 4px 0 #7a5228, 0 8px 14px rgba(70, 40, 15, .25); }
 .caixa-cos::before { content: ""; position: absolute; left: -4px; right: -4px; top: -6px; height: 10px; border-radius: 5px; background: #c48a4a; box-shadow: inset 0 0 0 2px #8a5a2b; }
-.caixa img { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: 70px; height: 52px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .25)); transition: transform .2s; }
-.caixa:hover img { transform: translateX(-50%) translateY(-4px); }
-.caixa-nom { font: 600 13px/1.1 var(--display); color: var(--tinta); text-align: center; background: rgba(251, 245, 234, .92); border-radius: 8px; padding: 2px 6px; max-width: 104px; }
+.caixa img { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 78px; height: 54px; object-fit: contain; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .25)); transition: transform .2s; }
+.caixa:hover img { transform: translate(-50%, -50%) scale(1.06); }
+.caixa-nom { font: 700 16px/1.1 var(--display); color: var(--tinta); text-align: center; background: rgba(251, 245, 234, .95); border-radius: 9px; padding: 3px 7px; max-width: 116px; }
 .caixa[aria-expanded="true"] .caixa-cos { box-shadow: inset 0 0 0 3px #9a6a35, 0 0 0 4px var(--sol), 0 8px 14px rgba(70, 40, 15, .25); }
-.caixa[aria-expanded="true"] img { transform: translateX(-50%) translateY(-10px); }
+.caixa[aria-expanded="true"] img { transform: translate(-50%, -50%) scale(1.12); }
 .caixa.sugerida .caixa-cos { box-shadow: inset 0 0 0 3px #9a6a35, 0 0 0 4px var(--sol), 0 0 22px 6px rgba(255, 207, 63, .8); animation: brillo-caixa 1.6s ease-in-out infinite; }
 @keyframes brillo-caixa { 50% { box-shadow: inset 0 0 0 3px #9a6a35, 0 0 0 4px var(--sol), 0 0 30px 10px rgba(255, 207, 63, .95); } }
 body.jugando .caixes { opacity: .5; }
@@ -64,8 +64,8 @@ body.jugando .caixes { opacity: .5; }
 .ficha.activa { background: #e6f6ea; box-shadow: 0 3px 0 #7cc08f, 0 0 0 3px var(--verde); }
 .ficha.sugerida { background: #fff6cf; box-shadow: 0 3px 0 #e6c45a, 0 0 0 3px var(--sol), 0 0 18px 4px rgba(255, 207, 63, .65); animation: brillo 1.6s ease-in-out infinite; }
 @media (max-width: 900px) {
-  .caixes { width: 80px; gap: 6px; } .caixa-cos { width: 74px; height: 48px; } .caixa img { width: 56px; height: 42px; bottom: 20px; }
-  .caixa-nom { font-size: 11px; max-width: 80px; }
+  .caixes { width: 88px; gap: 6px; } .caixa-cos { width: 76px; height: 50px; } .caixa img { width: 62px; height: 42px; }
+  .caixa-nom { font-size: 13px; max-width: 88px; }
 }@keyframes brillo { 50% { box-shadow: 0 3px 0 #e6c45a, 0 0 0 3px var(--sol), 0 0 26px 8px rgba(255, 207, 63, .85); } }
 /* ---------- Escenario ---------- */
 .escenario { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
@@ -160,6 +160,12 @@ body.vista-mesa .repo { background: linear-gradient(#eef6f1, #dbeae1); border-ri
 .r-intro { display: inline-block; margin: 0 0 6px; padding: 6px 16px; border-radius: 14px; background: #fff1d6; color: #7a4a00; font: 600 18px var(--display); }
 .boton.saltar { background: #fff; color: var(--naranja-osc); box-shadow: 0 4px 0 #e6c9a4, 0 0 0 2px var(--naranja); }
 .boton svg { width: 24px; height: 24px; }
+/* Portada: borrar el progreso (doble toque) */
+.pt-esborrar { display: flex; justify-content: center; margin-top: 16px; }
+.pt-esborrar-boto { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 16px; min-height: 44px; padding: 8px 16px; cursor: pointer; background: #fff; color: var(--rojo); font: 600 15px var(--display); box-shadow: 0 3px 0 #ecd0c8; touch-action: manipulation; }
+.pt-esborrar-boto svg { width: 20px; height: 20px; }
+.pt-esborrar-boto[data-confirmar] { background: var(--rojo); color: #fff; box-shadow: 0 3px 0 #a8322a; }
+.pt-esborrar-boto:disabled { opacity: .6; }
 /* Portada: botón del tutorial */
 .pt-boto.tut svg { color: #2f7fd8; }/* Guía de tinkering en la zona docente */
 .pt-guia { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding: 14px 16px; border-radius: 22px; background: #3a4a7a; color: #fff; box-shadow: 0 4px 0 #26315a; }

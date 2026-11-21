@@ -1,4 +1,4 @@
-﻿/* =====================================================================
+/* =====================================================================
    piezas.js — Catálogo de piezas (física Rapier 2D + malla Three.js).
 
    Las piezas reproducen los materiales del "Laboratori de mecànica" de la
@@ -131,10 +131,50 @@
   }
   const etiquetar = (ctx, col, etiqueta) => ctx.mapa.set(col.handle, { etiqueta });
 
-  /** Pieza de un solo cuerpo: `fisica(rb)` añade colliders, `hijos` es la malla. */
+  /* ---------- Montaje con espigas ----------
+     Como en el panel real, las piezas de madera (listones, rampas, bloques,
+     caja, lanzador) y las que giran sobre un eje (engranajes, manivela,
+     polea, palanca, péndulo) se sujetan con espigas metidas en sus agujeros
+     (TK.FORATS). Al pulsar Play (ctx.jugando) app.js calcula p.montaje:
+       n    espigas metidas en agujeros de la pieza
+       eje  la espiga (registro) cuando solo hay una
+       fijo tubos y conos: atados con gomas a las espigas, no se mueven
+     Sin espigas la pieza cae (en la mesa se queda suelta); con una, cuelga y
+     gira sobre ella hasta apoyarse en algo (otra espiga, por ejemplo); con dos
+     o más, queda fija. Las piezas fijas de los retos (p.fija) van atornilladas. */
+  TK.FORATS = {
+    liston: [[-100, 0], [0, 0], [100, 0]], canal: [[-100, 0], [0, 0], [100, 0]],
+    bloque: [[-60, 0], [-20, 0], [20, 0], [60, 0]], cuna: [[10, 12], [50, 12], [50, -8]],
+    caja: [[-40, 30], [40, 30]], lanzador: [[-80, -20], [-80, 20]], palanca: [[-120, 0], [-60, 0], [0, 0], [60, 0], [120, 0]],
+    engranaje50: [[0, 0]], engranaje100: [[0, 0]], engranaje150: [[0, 0]], engranaje200: [[0, 0]], manivela: [[0, 0]],
+    polea: [[0, 0]], pendulo: [[0, 0]],
+  };
+  /** Tubos y conos: no tienen agujeros; se apoyan en espigas y se atan con gomas. */
+  TK.APOYO = ["tubo", "codo", "corrugado", "cono"];
+  /** ¿Cómo queda la pieza al pulsar Play? "fijo" o "dinamico". */
+  function montada(p, ctx) {
+    if (!ctx.jugando || p.fija || !p.montaje) return "fijo";
+    return p.montaje.fijo || p.montaje.n >= 2 ? "fijo" : "dinamico";
+  }
+  const suelta = (p, ctx) => montada(p, ctx) === "dinamico" && !(p.montaje && p.montaje.n === 1);
+  /** Con una sola espiga, la pieza gira sobre ella (articulación sin choque entre las dos). */
+  function colgar(ctx, p, rb) {
+    const e = p.montaje && p.montaje.n === 1 && p.montaje.eje;
+    if (!e || !e.inst || !rb.isDynamic()) return null;
+    const t = rb.translation(), a = rb.rotation(), c = Math.cos(a), s = Math.sin(a);
+    const ex = TK.X(e.x) - t.x, ey = TK.Y(e.y) - t.y;
+    const j = ctx.mundo.createImpulseJoint(R().JointData.revolute({ x: c * ex + s * ey, y: -s * ex + c * ey }, { x: 0, y: 0 }), rb, e.inst.cuerpos[0], true);
+    j.setContactsEnabled(false);
+    return j;
+  }
+
+  /** Pieza de un solo cuerpo: `fisica(rb)` añade colliders, `hijos` es la malla.
+      tipo "montado": cuelga de sus espigas (ver montada). */
   function piezaSimple(p, ctx, tipo, fisica, hijos, opciones, extra) {
-    const rb = cuerpo(ctx, tipo, p.x, p.y, p.angulo, opciones);
+    const t = tipo === "montado" ? montada(p, ctx) : tipo;
+    const rb = cuerpo(ctx, t, p.x, p.y, p.angulo, tipo === "montado" ? { amortiguarGiro: 0.8, ...opciones } : opciones);
     fisica(rb);
+    if (tipo === "montado") colgar(ctx, p, rb);
     const g = grupo(hijos);
     return instancia(p, ctx, [rb], g, () => posar(g, rb), extra);
   }
@@ -218,14 +258,18 @@
       interno.add(e);
     }
     (extra.adornos || []).forEach((a) => interno.add(a));
-    ctx.mundo.createImpulseJoint(R().JointData.revolute({ x: 0, y: 0 }, { x: 0, y: 0 }), eje, rueda, true).setContactsEnabled(false);
+    // Sin espiga en el agujero del centro, la rueda no tiene eje: cae
+    const libre = suelta(p, ctx);
+    if (!libre) ctx.mundo.createImpulseJoint(R().JointData.revolute({ x: 0, y: 0 }, { x: 0, y: 0 }), eje, rueda, true).setContactsEnabled(false);
     const gR = grupo([interno]);
-    const gE = fijo(grupo([TK.espiga(0.62)]), p.x, p.y);
+    // Las de los retos llevan su eje atornillado; las demás se ponen sobre una espiga
+    const gE = p.fija ? fijo(grupo([TK.espiga(0.62)]), p.x, p.y) : null;
     const i = instancia(p, ctx, [eje, rueda], grupo([gR, gE]), () => posar(gR, rueda), extra.instancia);
-    i.engranaje = { rb: rueda, r, n, x: p.x, y: p.y, interno };
+    i.engranaje = { rb: rueda, r, n, x: p.x, y: p.y, interno, suelto: libre };
     // Roce seco del eje: una rueda suelta no gira sola por el peso de su
     // espiga excéntrica (como en el panel real); la manivela la vence sin esfuerzo.
     i.friccion = () => {
+      if (libre) return;
       const w = rueda.angvel();
       if (w) rueda.setAngvel(Math.sign(w) * Math.max(0, Math.abs(w) - 1.2 * ctx.mundo.timestep), true);
     };
@@ -279,7 +323,12 @@
     KT: 24,      // rigidez de la goma estirada por la pinza (como un tirachinas)
     TIRA: 480,   // largo máximo de la goma estirada (px)
     GATILLO: 0.06, // masa mínima que suelta la pinza al caerle encima (el corcho no llega)
+    // Tres medidas de goma (factor sobre L0, MIN y MAX). Una goma más larga es
+    // más blanda: con el mismo estiramiento empuja menos (K / factor).
+    MIDES: { gomaPetita: 0.5, goma: 1, gomaGran: 1.6 },
   };
+  /** Factor de medida de una goma (registro con p.mida; 1 = la de 20 cm). */
+  TK.gomaMida = (p) => (p && p.mida) || 1;
 
   /* ---------- Cadenas de bicicleta ---------- */
   TK.CADENA = {
@@ -351,23 +400,38 @@
     return mejor;
   }
 
-  /** Física de una goma entre a y b (unidades). Devuelve paso() y los contactos para dibujarla. */
-  function fisicaGoma(ctx, a, b) {
-    const { K, MU } = TK.GOMA, L0 = TK.GOMA.L0 * S;
-    const d = Math.hypot(b.x - a.x, b.y - a.y);
-    // Una goma floja se deforma mucho y se queda la energía (casi no rebota);
-    // una goma muy tensa la devuelve casi entera.
-    const C = TK.GOMA.C * Math.min(TK.GOMA.CMAX, Math.pow(L0 / d, TK.GOMA.P));
-    const u = { x: (b.x - a.x) / d, y: (b.y - a.y) / d }, n = { x: -u.y, y: u.x };
+  /**
+   * Física de una goma entre a y b (unidades), de medida `mida` (factor).
+   * moverA / moverB (opcionales) dan la posición actual de un extremo que se
+   * mueve (goma enganchada a un listón que cuelga de una sola espiga, por ejemplo).
+   * Devuelve paso(), los extremos actuales (a, b) y los contactos para dibujarla.
+   */
+  function fisicaGoma(ctx, a, b, mida = 1, moverA = null, moverB = null) {
+    const { MU } = TK.GOMA, K = TK.GOMA.K / mida, L0 = TK.GOMA.L0 * S * mida;
+    let d, C, u, n;
+    const medir = () => {
+      d = Math.max(Math.hypot(b.x - a.x, b.y - a.y), 1e-4);
+      // Una goma floja se deforma mucho y se queda la energía (casi no rebota);
+      // una goma muy tensa la devuelve casi entera.
+      C = TK.GOMA.C * Math.min(TK.GOMA.CMAX, Math.pow(L0 / d, TK.GOMA.P));
+      u = { x: (b.x - a.x) / d, y: (b.y - a.y) / d };
+      n = { x: -u.y, y: u.x };
+    };
+    medir();
     const estados = new Map(); // handle del collider -> { lado, toca }
-    const f = { contactos: [], estirado: 0 };
+    const f = { contactos: [], estirado: 0, a, b, ignorar: new Set() }; // ignorar: cuerpos donde está enganchada
     f.paso = () => {
       const dt = ctx.mundo.timestep;
+      if (moverA || moverB) {
+        if (moverA) a = f.a = moverA();
+        if (moverB) b = f.b = moverB();
+        medir();
+      }
       f.contactos = [];
       ctx.mundo.forEachCollider((col) => {
         if (col.isSensor()) return;
         const rb = col.parent();
-        if (!rb || !rb.isDynamic() || col.collisionGroups() === TK.GRUPO_ENGRANAJE) return;
+        if (!rb || !rb.isDynamic() || col.collisionGroups() === TK.GRUPO_ENGRANAJE || f.ignorar.has(rb.handle)) return;
         const c = col.translation();
         const sd = (c.x - a.x) * n.x + (c.y - a.y) * n.y; // distancia (con signo) a la goma
         let e = estados.get(col.handle);
@@ -428,8 +492,8 @@
    * sujeta, la bolsa no se mueve; al soltarla (soltar()), la goma tira de la
    * bolsa hacia la línea a-b y lanza lo que tenga delante.
    */
-  function tirachinas(ctx, a, b, tensor) {
-    const L0 = TK.GOMA.L0 * S, KT = TK.GOMA.KT;
+  function tirachinas(ctx, a, b, tensor, mida = 1) {
+    const L0 = TK.GOMA.L0 * S * mida, KT = TK.GOMA.KT / mida;
     const e = { x: TK.X(tensor.x), y: TK.Y(tensor.y) };
     const d = Math.hypot(b.x - a.x, b.y - a.y);
     const u = { x: (b.x - a.x) / d, y: (b.y - a.y) / d };
@@ -481,7 +545,7 @@
    * dibujar(a, b, contactos) la redibuja (unidades): floja hace panza; al
    * empujarla forma una V; cuanto más estirada, más delgada.
    */
-  function mallaGoma() {
+  function mallaGoma(mida = 1) {
     const raiz = new T.Group();
     const geo = new T.CylinderGeometry(1, 1, 1, 8);
     const tramos = [];
@@ -498,7 +562,7 @@
       raiz.add(m);
       return m;
     });
-    const L0 = TK.GOMA.L0 * S;
+    const L0 = TK.GOMA.L0 * S * mida;
     function dibujar(a, b, contactos = []) {
       const nodos = [a, ...contactos, b];
       let largo = 0;
@@ -514,7 +578,7 @@
           puntos.push({ x: p.x + (q.x - p.x) * s, y: p.y + (q.y - p.y) * s - 4 * h * s * (1 - s), junto: (j === 0 && k > 1) || (j === 4 && k < nodos.length - 1) });
         }
       }
-      const grosor = 0.022 / Math.sqrt(Math.max(1, largo / L0));
+      const grosor = (0.016 + 0.006 * mida) / Math.sqrt(Math.max(1, largo / L0)); // las grandes, más gruesas
       const dx = b.x - a.x, dy = b.y - a.y, dl = Math.hypot(dx, dy) || 1;
       const nx = -dy / dl, ny = dx / dl;
       let k = 0;
@@ -572,18 +636,18 @@
     /* Espigas de 8 mm: se clavan en un agujero. Hacen de tope o de eje. */
     espiga: {
       nombre: "Espiga", rotable: false, agujero: true,
-      crear: (p, ctx) => piezaSimple(p, ctx, "fijo", (rb) => bola(ctx, rb, 5, "madera"), [TK.espiga(0.4)]),
+      crear: (p, ctx) => piezaSimple(p, ctx, "fijo", (rb) => bola(ctx, rb, 5, "madera"), [TK.espiga(0.56)]),
     },
     espigaLarga: {
       nombre: "Espiga llarga", rotable: false, agujero: true,
-      crear: (p, ctx) => piezaSimple(p, ctx, "fijo", (rb) => bola(ctx, rb, 5, "madera"), [TK.espiga(0.8)]),
+      crear: (p, ctx) => piezaSimple(p, ctx, "fijo", (rb) => bola(ctx, rb, 5, "madera"), [TK.espiga(0.9)]),
     },
 
-    /* Listón plano (rampa) de contrachapado con dos agujeros. */
+    /* Listón plano (rampa) de contrachapado con tres agujeros. */
     liston: {
       nombre: "Llistó", rotable: true, angulo0: 15 * G,
-      crear: (p, ctx) => piezaSimple(p, ctx, "fijo", (rb) => caja(ctx, rb, 240, 14, "madera"),
-        [TK.caja(240, 14, M.madera, { r: 4 }), TK.agujeros([[-100, 0], [100, 0]], 3.5)]),
+      crear: (p, ctx) => piezaSimple(p, ctx, "montado", (rb) => caja(ctx, rb, 240, 14, "madera"),
+        [TK.caja(240, 14, M.madera, { r: 4 }), TK.agujeros(TK.FORATS.liston, 3.5)]),
     },
 
     /* Rampa cóncava: listón grueso con una acanaladura. */
@@ -598,15 +662,16 @@
         geo.rotateY(Math.PI / 2);
         geo.translate(-L / 2, 0, Z);
         const m = TK.sombra(new T.Mesh(geo, M.maderaMedia));
-        return piezaSimple(p, ctx, "fijo", (rb) => caja(ctx, rb, 240, 10, "madera", { ajustes: { f: 0.35 } }), [m]);
+        return piezaSimple(p, ctx, "montado", (rb) => caja(ctx, rb, 240, 10, "madera", { ajustes: { f: 0.35 } }),
+          [m, TK.agujeros(TK.FORATS.canal.map(([x]) => [x, 6]), 3.5, Z + 0.225)]);
       },
     },
 
     /* Bloque perforado rectangular (madera envejecida). */
     bloque: {
       nombre: "Bloc",rotable: true,
-      crear: (p, ctx) => piezaSimple(p, ctx, "fijo", (rb) => caja(ctx, rb, 160, 40, "madera"),
-        [TK.caja(160, 40, M.maderaVieja, { r: 4 }), TK.agujeros([[-60, 0], [-20, 0], [20, 0], [60, 0]], 4)]),
+      crear: (p, ctx) => piezaSimple(p, ctx, "montado", (rb) => caja(ctx, rb, 160, 40, "madera"),
+        [TK.caja(160, 40, M.maderaVieja, { r: 4 }), TK.agujeros(TK.FORATS.bloque, 4)]),
     },
 
     /* Bloque perforado triangular (prisma): una cuña que sirve de rampa. */
@@ -617,27 +682,73 @@
         const f = new T.Shape();
         pts.forEach(([x, y], k) => (k ? f.lineTo(x * S, -y * S) : f.moveTo(x * S, -y * S)));
         f.closePath();
-        return piezaSimple(p, ctx, "fijo", (rb) => poligono(ctx, rb, pts, "madera"),
-          [TK.extruir(f, M.maderaVieja, { bisel: 0.015 }), TK.agujeros([[30, 12]], 4)]);
+        return piezaSimple(p, ctx, "montado", (rb) => poligono(ctx, rb, pts, "madera"),
+          [TK.extruir(f, M.maderaVieja, { bisel: 0.015 }), TK.agujeros(TK.FORATS.cuna, 4)]);
       },
     },
 
-    /* Pinza de madera: se engancha mordiendo una espiga o el borde de un
-       listón (engancha: "pinza"). (x, y) es el punto donde muerde y el
-       ángulo, hacia dónde sale el cuerpo. Hace de tope o de brazo.
+    /* Pinza de madera (engancha: "pinza"). Nunca va suelta: o bien está
+       CLAVADA por el muelle en una espiga (p.clavada; la boca queda libre),
+       o bien MUERDE la punta de un listón, la boca de un tubo, el aro de un
+       cono o una goma. (x, y) es la punta de la boca y el ángulo, hacia dónde
+       sale el cuerpo; el muelle está a 20 px de la punta.
+       Si lo que muerde se mueve (un listón con una sola espiga, un tubo
+       suelto…), la pinza va con él. Una bola que pese (vidrio, goma, madera;
+       el corcho no: TK.GOMA.GATILLO) la abre al tocarle la boca: la clavada
+       la deja pasar y se vuelve a cerrar; la que muerde se suelta y cae.
        Con p.goma es un gatillo: muerde esa goma estirada y se apoya en la
-       espiga; si le cae encima algo que pese (GATILLO), se suelta, cae y la
-       goma sale disparada. */
+       espiga; si le cae encima algo que pese, se suelta, cae y la goma sale
+       disparada. */
     pinza: {
       nombre: "Pinça", rotable: true, engancha: "pinza",
       crear(p, ctx) {
         const m = mallaPinza();
-        let col = null;
-        const i = piezaSimple(p, ctx, "fijo", (rb) => {
-          col = caja(ctx, rb, 84, 18, "madera", { x: 28 });
-          if (p.goma) etiquetar(ctx, col, "gatillo");
+        const hostRb = ctx.jugando && p.host && p.host.inst && !p.goma && !p.clavada ? p.host.inst.cuerpos[0] : null;
+        const mueve = !!(hostRb && hostRb.isDynamic());
+        let col = null, boca = null;
+        const i = piezaSimple(p, ctx, mueve ? "dinamico" : "fijo", (rb) => {
+          if (p.clavada) {
+            boca = caja(ctx, rb, 34, 18, "madera", { x: 3 });
+            col = caja(ctx, rb, 50, 18, "madera", { x: 45 });
+            etiquetar(ctx, boca, "boca");
+          } else {
+            col = caja(ctx, rb, 84, 18, "madera", { x: 28 });
+            etiquetar(ctx, col, p.goma ? "gatillo" : "mossega");
+          }
         }, [m.raiz]);
         i.abrir = m.abrir;
+        const rb0 = i.cuerpos[0];
+        let union = null;
+        if (mueve) {
+          const t = rb0.translation(), h = hostRb.translation(), ha = hostRb.rotation(), c = Math.cos(ha), s = Math.sin(ha);
+          const dx = t.x - h.x, dy = t.y - h.y;
+          union = ctx.mundo.createImpulseJoint(R().JointData.fixed({ x: c * dx + s * dy, y: -s * dx + c * dy }, rb0.rotation() - ha, { x: 0, y: 0 }, 0), hostRb, rb0, true);
+          union.setContactsEnabled(false);
+        }
+        // Una bola pesada que toca la boca la abre
+        let abierta = 0, soltada = false;
+        i.tocar = (otro) => {
+          if (p.goma || soltada || abierta || otro.mass() < TK.GOMA.GATILLO) return;
+          const t = rb0.translation(), b = otro.translation(), a = rb0.rotation();
+          const lx = Math.cos(a) * (b.x - t.x) + Math.sin(a) * (b.y - t.y); // a lo largo de la pinza (0 = punta)
+          if (p.clavada) {
+            if (lx > 0.02) return; // solo si llega de cara a la boca
+            abierta = 60;
+            boca.setSensor(true);
+            m.abrir(1);
+            TK.audio.clic();
+          } else if (lx < 0.22) {
+            soltada = true;
+            if (union) { ctx.mundo.removeImpulseJoint(union, true); union = null; }
+            if (!rb0.isDynamic()) rb0.setBodyType(R().RigidBodyType.Dynamic, true);
+            col.setCollisionGroups((0x0010 << 16) | 0x0001);
+            m.abrir(1);
+            TK.audio.clic();
+          }
+        };
+        i.paso = () => {
+          if (abierta && --abierta === 0) { boca.setSensor(false); m.abrir(0); }
+        };
         if (p.goma) {
           const rb = i.cuerpos[0];
           let suelta = false;
@@ -666,7 +777,7 @@
         cil.position.z = Z;
         const a1 = anillo(0.31, M.pvcBorde), a2 = anillo(0.31, M.pvcBorde);
         [a1, a2].forEach((a, k) => { a.rotation.y = Math.PI / 2; a.position.set((k ? 1 : -1) * (L / 2) * S, 0, Z); });
-        return piezaSimple(p, ctx, "fijo", (rb) => {
+        return piezaSimple(p, ctx, "montado", (rb) => {
           caja(ctx, rb, L, 6, "pvc", { y: -33 });
           caja(ctx, rb, L, 6, "pvc", { y: 33 });
         }, [cil, a1, a2]);
@@ -684,7 +795,7 @@
         const aArriba = anillo(0.31, M.pvcBorde), aDcha = anillo(0.31, M.pvcBorde);
         aArriba.rotation.x = Math.PI / 2; aArriba.position.set((ox - Rc) * S, -oy * S, Z);
         aDcha.rotation.y = Math.PI / 2; aDcha.position.set(ox * S, -(oy + Rc) * S, Z);
-        return piezaSimple(p, ctx, "fijo", (rb) => {
+        return piezaSimple(p, ctx, "montado", (rb) => {
           arco(ctx, rb, ox, oy, Rc - 34, 90 * G, 180 * G, 5, 6, "pvc");
           arco(ctx, rb, ox, oy, Rc + 34, 90 * G, 180 * G, 11, 6, "pvc");
         }, [toro, aArriba, aDcha]);
@@ -708,7 +819,7 @@
           r.rotation.order = "ZXY";
           hijos.push(r);
         }
-        return piezaSimple(p, ctx, "fijo", (rb) => {
+        return piezaSimple(p, ctx, "montado", (rb) => {
           arco(ctx, rb, ox, 0, Rc - 34, -90 * G, -270 * G, 7, 6, "pvc");
           arco(ctx, rb, ox, 0, Rc + 34, -90 * G, -270 * G, 16, 6, "pvc");
         }, hijos);
@@ -723,7 +834,7 @@
         const m = TK.sombra(new T.Mesh(lathe, M.cono));
         m.scale.z = 0.7;
         const ang = Math.atan2(90, 35), largo = Math.hypot(35, 90);
-        return piezaSimple(p, ctx, "fijo", (rb) => {
+        return piezaSimple(p, ctx, "montado", (rb) => {
           caja(ctx, rb, largo, 8, "madera", { x: -44, y: 0, ang });
           caja(ctx, rb, largo, 8, "madera", { x: 44, y: 0, ang: Math.PI - ang });
         }, [m]);
@@ -737,11 +848,12 @@
     goma: {
       nombre: "Goma elàstica", rotable: false, engancha: "goma",
       crear(p, ctx) {
+        const mida = TK.gomaMida(p);
         // Sin espigas (miniatura del repositorio): dos espigas de muestra
-        const A = p.pa || (p.a ? { x: p.a.x, y: p.a.y } : { x: p.x - 80, y: p.y });
-        const B = p.pb || (p.b ? { x: p.b.x, y: p.b.y } : { x: p.x + 80, y: p.y });
+        const A = p.pa || (p.a ? { x: p.a.x, y: p.a.y } : { x: p.x - 80 * mida, y: p.y });
+        const B = p.pb || (p.b ? { x: p.b.x, y: p.b.y } : { x: p.x + 80 * mida, y: p.y });
         const a = { x: TK.X(A.x), y: TK.Y(A.y) }, b = { x: TK.X(B.x), y: TK.Y(B.y) };
-        const dibujo = mallaGoma();
+        const dibujo = mallaGoma(mida);
         const hijos = [dibujo.raiz];
         if (!p.a) hijos.push(fijo(grupo([TK.espiga(0.4)]), A.x, A.y), fijo(grupo([TK.espiga(0.4)]), B.x, B.y));
         // Sensor fino a lo largo de la goma: solo sirve para tocarla y seleccionarla
@@ -749,19 +861,32 @@
         const rb = cuerpo(ctx, "fijo", (A.x + B.x) / 2, (A.y + B.y) / 2, Math.atan2(B.y - A.y, B.x - A.x));
         caja(ctx, rb, Math.max(largo - 24, 8), 14, "goma", { sensor: true });
         if (p.tensor) {
-          const t = tirachinas(ctx, a, b, p.tensor);
+          const t = tirachinas(ctx, a, b, p.tensor, mida);
           hijos.push(t.malla);
           const i = instancia(p, ctx, [rb, t.bolsa], grupo(hijos), () => { t.sync(); dibujo.dibujar(a, b, [t.punto()]); });
           i.paso = t.paso;
           i.soltar = t.soltar;
           return i;
         }
-        const fis = fisicaGoma(ctx, a, b);
-        const i = instancia(p, ctx, [rb], grupo(hijos), () => dibujo.dibujar(a, b, fis.contactos));
+        // Atada alrededor de un tubo o un cono (p.lligam): lo sujeta, no rebota
+        if (p.lligam) return instancia(p, ctx, [rb], grupo(hijos), () => dibujo.dibujar(a, b, []));
+        // Si la pieza donde está enganchada se mueve, el extremo la sigue
+        const movil = (host, l) => {
+          const hb = ctx.jugando && host && host.inst && host.inst.cuerpos[0];
+          if (!hb || !hb.isDynamic()) return null;
+          const lx = ((l && l.x) || 0) * S, ly = -((l && l.y) || 0) * S;
+          return () => { const t = hb.translation(), r = hb.rotation(), c = Math.cos(r), s = Math.sin(r); return { x: t.x + c * lx - s * ly, y: t.y + s * lx + c * ly }; };
+        };
+        const fis = fisicaGoma(ctx, a, b, mida, movil(p.a, p.la), movil(p.b, p.lb));
+        for (const h of [p.a, p.b]) if (ctx.jugando && h && h.inst) h.inst.cuerpos.forEach((c) => fis.ignorar.add(c.handle));
+        const i = instancia(p, ctx, [rb], grupo(hijos), () => dibujo.dibujar(fis.a, fis.b, fis.contactos));
         i.paso = fis.paso;
         return i;
       },
     },
+    /* Gomas pequeña (10 cm) y grande (32 cm): en el panel son una "goma" con p.mida. */
+    gomaPetita: { nombre: "Goma petita", rotable: false, engancha: "goma", mida: TK.GOMA.MIDES.gomaPetita, crear: (p, ctx) => TK.PIEZAS.goma.crear({ ...p, mida: TK.GOMA.MIDES.gomaPetita }, ctx) },
+    gomaGran: { nombre: "Goma gran", rotable: false, engancha: "goma", mida: TK.GOMA.MIDES.gomaGran, crear: (p, ctx) => TK.PIEZAS.goma.crear({ ...p, mida: TK.GOMA.MIDES.gomaGran }, ctx) },
 
     /* Cadena de bicicleta entre dos engranajes (p.a y p.b son sus registros;
        engancha: "cadena"). Une engranajes que no se tocan: giran en el MISMO
@@ -824,7 +949,7 @@
         const pomo = TK.cilindro(9, 0.34, M.gomaRoja, { y: -54, z: Z + 0.33 });
         const i = crearEngranaje(p, ctx, 40, { adornos: [brazo, pomo], instancia: { girando: false } });
         i.manivela = true;
-        i.paso = () => { if (i.girando) i.engranaje.rb.setAngvel(-4, true); else i.friccion(); };
+        i.paso = () => { if (i.girando && !i.engranaje.suelto) i.engranaje.rb.setAngvel(-4, true); else i.friccion(); };
         return i;
       },
     },
@@ -838,7 +963,8 @@
       nombre: "Politja", rotable: false, agujero: true,
       crear(p, ctx) {
         const RAD = 80, LMIN = 1.2; // polea grande de 200 mm
-        const rueda = cuerpo(ctx, "fijo", p.x, p.y, 0);
+        const libre = suelta(p, ctx); // sin espiga en el centro: cae todo
+        const rueda = cuerpo(ctx, libre ? "dinamico" : "fijo", p.x, p.y, 0);
         bola(ctx, rueda, RAD, "madera");
         const iz = { x: TK.X(p.x - RAD), y: TK.Y(p.y) }, de = { x: TK.X(p.x + RAD), y: TK.Y(p.y) };
         const cubo = cuerpo(ctx, "dinamico", p.x - RAD, p.y + LMIN / S, 0, { sinGiro: true, amortiguar: 0.3 });
@@ -849,7 +975,7 @@
         caja(ctx, pesa, 40, 40, "madera", { ajustes: { d: 1.46 } });
         const LTOT = (iz.y - cubo.translation().y) + (de.y - pesa.translation().y);
 
-        const gR = fijo(grupo([TK.cilindro(RAD, 0.26, M.madera), TK.cilindro(RAD - 8, 0.3, M.maderaMedia), TK.cilindro(16, 0.36, M.hierro), TK.espiga(0.6),
+        const gR = fijo(grupo([TK.cilindro(RAD, 0.26, M.madera), TK.cilindro(RAD - 8, 0.3, M.maderaMedia), TK.cilindro(16, 0.36, M.hierro), p.fija ? TK.espiga(0.6) : null,
           TK.agujeros([[40, 0], [-40, 0], [0, 40], [0, -40]].map(([x, y]) => [x, y]), 6, Z + 0.16)]), p.x, p.y);
         const arcoCuerda = new T.Mesh(new T.TorusGeometry(RAD * S, 0.016, 6, 24, Math.PI), M.cuerda);
         arcoCuerda.position.z = Z;
@@ -864,9 +990,11 @@
           const u = { x: dx / l, y: dy / l };
           return { t, v, l, u, vn: v.x * u.x + v.y * u.y };
         }
+        if (libre) hilos.forEach((h) => (h.visible = false));
         return instancia(p, ctx, [rueda, cubo, pesa], grupo([gR, gC, gW, ...hilos]), () => {
           posar(gC, cubo);
           posar(gW, pesa);
+          if (libre) { posar(gR, rueda); return; }
           const c = cubo.translation(), w = pesa.translation();
           const borde = c.y + 0.25, nudo = { x: c.x, y: borde + 0.28 };
           tensarU(hilos[0], iz.x, iz.y, nudo.x, nudo.y);
@@ -875,6 +1003,7 @@
           tensarU(hilos[3], de.x, de.y, w.x, w.y + 0.2);
         }, {
           paso() {
+            if (libre) return;
             const pares = [[cubo, iz], [pesa, de]];
             // Cuelgan rectos: solo se mueven en vertical, bajo su punto de la rueda
             for (const [b, a] of pares) {
@@ -923,15 +1052,20 @@
     palanca: {
       nombre: "Palanca", rotable: true, agujero: true,
       crear(p, ctx) {
-        const LIM = 28 * G;
+        // Eje en el agujero del centro: sube y baja ±28°. Con la espiga en otro
+        // agujero cuelga de ella; con dos espigas no se mueve; sin espiga, cae.
+        const LIM = 28 * G, m = p.montaje, jugando = ctx.jugando && !p.fija && m;
+        const centro = !jugando || (m.n === 1 && Math.abs(m.eje.x - p.x) < 3 && Math.abs(m.eje.y - p.y) < 3);
         const ancla = cuerpo(ctx, "fijo", p.x, p.y, p.angulo);
-        const tabla = cuerpo(ctx, "dinamico", p.x, p.y, p.angulo, { amortiguarGiro: 0.3 });
+        const tabla = cuerpo(ctx, jugando && m.n >= 2 ? "fijo" : "dinamico", p.x, p.y, p.angulo, { amortiguarGiro: 0.3 });
         caja(ctx, tabla, 280, 14, "madera", { ajustes: { d: 0.8 } });
-        const eje = ctx.mundo.createImpulseJoint(R().JointData.revolute({ x: 0, y: 0 }, { x: 0, y: 0 }), ancla, tabla, true);
-        eje.setLimits(-LIM, LIM);
-        eje.setContactsEnabled(false);
-        const gT = grupo([TK.caja(280, 14, M.madera, { r: 4 }), TK.agujeros([[-120, 0], [-60, 0], [60, 0], [120, 0]], 3.5)]);
-        const gE = fijo(grupo([TK.espiga(0.6)]), p.x, p.y);
+        if (centro) {
+          const eje = ctx.mundo.createImpulseJoint(R().JointData.revolute({ x: 0, y: 0 }, { x: 0, y: 0 }), ancla, tabla, true);
+          eje.setLimits(-LIM, LIM);
+          eje.setContactsEnabled(false);
+        } else colgar(ctx, p, tabla);
+        const gT = grupo([TK.caja(280, 14, M.madera, { r: 4 }), TK.agujeros(TK.FORATS.palanca, 3.5)]);
+        const gE = p.fija ? fijo(grupo([TK.espiga(0.6)]), p.x, p.y) : null;
         return instancia(p, ctx, [ancla, tabla], grupo([gT, gE]), () => posar(gT, tabla));
       },
     },
@@ -945,20 +1079,24 @@
         // quieto; apartado, oscila y se va frenando (roce del eje y del aire)
         // hasta pararse. Si algo lo golpea, se mueve según la fuerza del golpe.
         const L = 170, off = TK.rot(0, L, p.angulo || 0);
-        const ancla = cuerpo(ctx, "fijo", p.x, p.y, 0);
-        bola(ctx, ancla, 10, "madera", { sensor: true }); // asa para seleccionarlo
+        // Sin espiga en el agujero del eje, todo el péndulo cae
+        const libre = suelta(p, ctx);
+        const ancla = cuerpo(ctx, libre ? "dinamico" : "fijo", p.x, p.y, 0);
+        bola(ctx, ancla, 10, "madera", { sensor: !libre }); // asa para seleccionarlo
         const peso = cuerpo(ctx, "dinamico", p.x + off.x, p.y + off.y, 0, { ccd: true, amortiguar: 0.22, amortiguarGiro: 0.3 });
         bola(ctx, peso, 22, "madera", { ajustes: { d: 2 } });
         // Varilla rígida: articulación de giro en el eje (no una cuerda que se afloja)
         ctx.mundo.createImpulseJoint(R().JointData.revolute({ x: 0, y: 0 }, { x: -off.x * S, y: off.y * S }), ancla, peso, true)
           .setContactsEnabled(false);
-        const gA = fijo(grupo([TK.espiga(0.45)]), p.x, p.y);
+        // Las de los retos llevan su espiga; las demás muestran el agujero del eje
+        const gA = fijo(grupo([p.fija ? TK.espiga(0.45) : TK.cilindro(10, 0.08, M.maderaOscura, { z: Z + 0.02 }), p.fija ? null : TK.agujeros([[0, 0]], 4, Z + 0.07)]), p.x, p.y);
         const gP = grupo([TK.esfera(22, M.haya)]);
         const hilo = TK.cuerda();
         const i = instancia(p, ctx, [ancla, peso], grupo([gA, gP, hilo]), () => {
           posar(gP, peso);
-          const t = peso.translation();
-          TK.tensar(hilo, p.x, p.y, t.x / S + TK.W / 2, -t.y / S + TK.H / 2);
+          const t = peso.translation(), a = ancla.translation();
+          if (libre) posar(gA, ancla);
+          TK.tensar(hilo, a.x / S + TK.W / 2, -a.y / S + TK.H / 2, t.x / S + TK.W / 2, -t.y / S + TK.H / 2);
         });
         // Roce seco del eje: frena siempre lo mismo, así que al final se para del todo
         i.paso = () => {
@@ -1000,11 +1138,12 @@
     /* Caja de bloques: recoge objetos. */
     caja: {
       nombre: "Caixa", rotable: true,
-      crear: (p, ctx) => piezaSimple(p, ctx, "fijo", (rb) => {
+      crear: (p, ctx) => piezaSimple(p, ctx, "montado", (rb) => {
         caja(ctx, rb, 110, 12, "madera", { y: 30 });
         caja(ctx, rb, 12, 72, "madera", { x: -49, y: -6 });
         caja(ctx, rb, 12, 72, "madera", { x: 49, y: -6 });
-      }, [TK.caja(110, 12, M.maderaVieja, { y: 30 }), TK.caja(12, 72, M.maderaVieja, { x: -49, y: -6 }), TK.caja(12, 72, M.maderaVieja, { x: 49, y: -6 })]),
+      }, [TK.caja(110, 12, M.maderaVieja, { y: 30 }), TK.caja(12, 72, M.maderaVieja, { x: -49, y: -6 }), TK.caja(12, 72, M.maderaVieja, { x: 49, y: -6 }),
+        TK.agujeros(TK.FORATS.caja, 3.5)]),
     },
 
     /* Meta (objetivo): caja con banderín. Cuando una bola entra, reto superado. */
@@ -1088,12 +1227,13 @@
       nombre: "Llançador", rotable: true,
       crear(p, ctx) {
         const tipo = p.bola || "canica", V = TK.LANZADOR.V;
-        const base = cuerpo(ctx, "fijo", p.x, p.y, p.angulo);
+        const base = cuerpo(ctx, montada(p, ctx), p.x, p.y, p.angulo);
         caja(ctx, base, 110, 8, "madera", { x: -20, y: -30 });
         caja(ctx, base, 110, 8, "madera", { x: -20, y: 30 });
         caja(ctx, base, 12, 68, "madera", { x: -80 });
+        colgar(ctx, p, base);
         const gB = grupo([TK.caja(110, 8, M.maderaMedia, { x: -20, y: -30, r: 3 }), TK.caja(110, 8, M.maderaMedia, { x: -20, y: 30, r: 3 }),
-          TK.caja(12, 68, M.maderaOscura, { x: -80, r: 3 })]);
+          TK.caja(12, 68, M.maderaOscura, { x: -80, r: 3 }), TK.agujeros(TK.FORATS.lanzador, 3.5, Z + 0.22)]);
         // Émbolo: muelle + pomo rojo; avanza de golpe al disparar
         const embolo = new T.Group();
         const muelle = new T.Mesh(new T.CylinderGeometry(0.07, 0.07, 1, 12, 1, true), M.hierro);
@@ -1111,6 +1251,7 @@
         const g = grupo([gB]);
         TK.pose(g, p.x, p.y, p.angulo || 0);
         const i = instancia(p, ctx, [base, rb], grupo([g, malla]), () => {
+          posar(g, base);
           posar(malla, rb);
           const avance = Math.min(1, pasos / 5);
           const xp = (-6 - rB - 22 + avance * 22) * S; // cabeza del émbolo: tensado, y suelta al disparar
@@ -1129,7 +1270,7 @@
   TK.CATEGORIAS = [
     // Títulos en js/textos/<idioma>.js -> categorias[id]
     { id: "boles", piezas: ["canica", "corcho", "pelota"] },
-    { id: "espigues", piezas: ["espiga", "espigaLarga", "goma", "pinza"] },
+    { id: "espigues", piezas: ["espiga", "espigaLarga", "gomaPetita", "goma", "gomaGran", "pinza"] },
     { id: "rampes", piezas: ["liston", "canal", "bloque", "cuna"] },
     { id: "tubs", piezas: ["tubo", "codo", "corrugado", "cono"] },
     { id: "engranatges", piezas: ["engranaje50", "engranaje100", "engranaje150", "engranaje200", "manivela", "cadena", "polea"] },

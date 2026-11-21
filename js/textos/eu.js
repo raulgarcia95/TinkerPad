@@ -465,3 +465,17 @@ Object.assign(TK.TEXTOS.eu.ui, {
  "tut11": "Hemen dago erronka; Pistak laguntzen dizu trabatzen bazara.",
  "tut12": "Etxearekin azalera itzultzen zara."
 });
+
+/* Montaje con espigas, pinza clavada y gomas de tres medidas */
+Object.assign(TK.TEXTOS.eu.piezas, {"gomaPetita":"Goma txikia","gomaGran":"Goma handia"});
+Object.assign(TK.TEXTOS.eu.ui, {
+ "posaEspigues": "Iltzatu ziriekin zuloetan: ziririk gabe erori egingo da ▶ sakatzean",
+ "unaEspiga": "Ziri bakarrarekin, pieza pendulu baten moduan biratuko da zerbaitetan bermatu arte. Birekin, finko geratzen da.",
+ "duesEspigues": "Bi ziri ditu: kendu bat biratu ahal izateko",
+ "pinzaSola": "Pintza ezin da airean geratu: iltzatu ziri batean edo egin dezala hozka ohol baten muturrean",
+ "faltaPinza": "Lehenik jarri ziri bat, ohol bat, hodi bat edo kono bat: pintza bertan helduko da",
+ "tocaPinza": "Ukitu ziri bat (malgukitik iltzatzen da), ohol baten muturra, hodi baten ahoa, kono baten ertza edo goma bat",
+ "noPinza": "Pintza ziri batean iltzatzen da edo ertz meheei egiten die hozka: ohol baten muturra, hodi baten ahoa, kono baten ertza edo goma bat",
+ "tut2": "Arrastatu pieza bat panelera eta iltzatu ziriekin bere zuloetan.",
+ "tut8": "Goma, pintza edo katea: aukeratu eta ukitu non lotzen den (ziriak, ohol baten muturra, bi engranaje)."
+});

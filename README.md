@@ -64,9 +64,19 @@ En la barra y en la portada: marca verde = superado, naranja = intentado sin sup
 
 ## Montaje
 
+- **Todo se sujeta con espigas**, como en el panel real. Listones, rampas, bloques, caja y lanzador tienen agujeros (`TK.FORATS` en `piezas.js`); engranajes, manivela, polea, palanca y péndulo, un agujero en el eje. Al pulsar Play:
+  - sin ninguna espiga en sus agujeros, la pieza **cae** (en la mesa se queda suelta y la mueven los golpes);
+  - con **una**, cuelga de ella y gira como un péndulo hasta apoyarse en algo (por ejemplo, otra espiga debajo: así se hace una rampa inclinada). Si otras espigas la tocan por los dos lados del giro, queda fija;
+  - con **dos o más**, queda fija.
+  - Las piezas fijas de los retos van atornilladas (tornillos de latón). Los dominós y el coche van sueltos.
+  - Una pieza que cae porque no tiene espigas no cuenta para tocar la campana o la meta.
+- **Tubos y conos** no tienen agujeros: se apoyan en espigas y se pueden **atar con gomas** entre espigas que los crucen. Con dos gomas, o una goma y una espiga donde se apoyan, quedan fijos (esas gomas ya no rebotan).
+- **Encajar**: las piezas con agujeros se colocan con el agujero de su punta más alta sobre un agujero del panel; si un agujero queda cerca de una espiga, encaja solo (y al dejar una espiga junto a un agujero, la pieza se desliza hasta encajar). Una pieza con una espiga gira sobre ella; con dos no se puede girar.
+- Con la **Pista** se iluminan en rojo las piezas que caerán por no tener espigas.
 - **Las piezas no se cruzan**: si al arrastrar o girar una pieza se mete en otra, brilla en rojo y, al soltarla, vuelve al último sitio libre. Tocarse sí está permitido; dos engranajes pueden engranar. Los engranajes cuentan por el centro de la rueda (los dientes y la biela deben poder rozar la campana).
-- **Goma elástica**: se toca un punto y luego otro. Puntos de enganche: espigas, agujeros de listones, rampas y bloques, y el mango de las pinzas. Solo se piden espigas si no hay ningún punto en el panel. Su tensión depende de la distancia (sin estirar mide 20 cm): floja hace panza y casi no rebota; tensa rebota más; los objetos pesados saltan más. Sigue a las piezas donde está enganchada.
-- **Pinza**: solo muerde donde lo haría una de verdad (bordes finos): espigas, los cantos y las puntas de un listón plano, la boca de un tubo de PVC, el aro de arriba de un cono de alambre, o **una goma**. La rampa cóncava y los bloques son demasiado gruesos.
+- **Goma elástica** de tres medidas: pequeña (10 cm), mediana (20 cm) y grande (32 cm) (`TK.GOMA.MIDES`). Se toca un punto y luego otro. Puntos de enganche: espigas, agujeros de listones, rampas y bloques, y el mango de las pinzas. Solo se piden espigas si no hay ningún punto en el panel. Su tensión depende de la distancia y de su medida: floja hace panza y casi no rebota; tensa rebota más; los objetos pesados saltan más; una goma más larga es más blanda. Sigue a las piezas donde está enganchada, también durante el Play si esa pieza se mueve.
+- **Pinza**: nunca va suelta. O se **clava por el muelle** en una espiga (corta o larga, también la que atraviesa un listón, un bloque o un engranaje), o **muerde** un borde fino: la **punta** de un listón plano (no sus cantos), la boca de un tubo de PVC, el aro de arriba de un cono de alambre o una goma. La rampa cóncava y los bloques son demasiado gruesos. Al arrastrarla va abierta siguiendo el dedo; al soltarla se cierra donde se pueda sujetar, y si se suelta en el aire vuelve a su sitio. Si lo que muerde se mueve durante el Play, la pinza va con ello.
+  - Una bola que pese (vidrio, goma, madera) que le llega de cara a la boca **la abre**: la pinza clavada la deja pasar y se vuelve a cerrar; la que muerde algo se suelta y cae. El corcho no la abre.
 - **Tirachinas con gatillo**: con la pinza se toca una goma y después la espiga donde se apoyará. La goma queda estirada hasta allí con una cuna donde puede descansar una bola. Si a la pinza le cae encima algo que pese (canica, pelota de goma, bola de madera; el corcho no), se suelta y la goma dispara lo que hay en la cuna. Parámetros en `TK.GOMA` (`KT`, `TIRA`, `GATILLO`).
 
 ## Física

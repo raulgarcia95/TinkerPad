@@ -116,7 +116,11 @@
         case "bloque": rect(x, y, 160, 40, a, 0, 0, solucio ? verd : [214, 190, 150]); break;
         case "cuna": fill(solucio ? verd : [214, 190, 150]); stroke(marca); poli([[-60, 30], [60, 30], [60, -30]].map(([u, v]) => { const [rx, ry] = rot(u, v, a); return P(x + rx, y + ry); })); break;
         case "espiga": case "espigaLarga": cercle(x, y, 6, solucio ? verd : [243, 220, 174], marca); break;
-        case "pinza": rect(x, y, 84, 16, a, 28, 0, solucio ? verd : COLOR.fusta); cercle(x + rot(20, 0, a)[0], y + rot(20, 0, a)[1], 5, COLOR.metall); break;
+        case "pinza": {
+          // Clavada: (x, y) es la espiga donde se clava el muelle; si no, la punta que muerde
+          const [mx, my] = rot(20, 0, a), px = p.clavada ? x - mx : x, py = p.clavada ? y - my : y;
+          rect(px, py, 84, 16, a, 28, 0, solucio ? verd : COLOR.fusta); cercle(px + mx, py + my, 5, COLOR.metall); break;
+        }
         case "tubo": rect(x, y, 200, 6, a, 0, -33, solucio ? verd : COLOR.pvc); rect(x, y, 200, 6, a, 0, 33, solucio ? verd : COLOR.pvc); break;
         case "codo": case "corrugado": case "cono": rect(x, y, 120, 70, a, 0, 0, solucio ? verd : p.tipo === "corrugado" ? [250, 190, 120] : COLOR.pvc); break;
         case "domino": rect(x, y, 16, 76, a, 0, 0, COLOR.fusta); break;
@@ -166,7 +170,8 @@
   /** Dibuja la solución de un reto (piezas nuevas en verde, gomas y tirachinas en negro). */
   function dibuixarSolucio(ds, r) {
     r.fijas.forEach((p) => ds.peca(p, false));
-    (r.piezas || []).forEach((p) => { if (!r.solucion.some((s) => s.desde && s.desde[0] === p.x && s.desde[1] === p.y)) ds.peca(p, false); });
+    const mateixa = (s, p) => s.desde && s.desde[0] === p.x && s.desde[1] === p.y && (!s.tipo || s.tipo === p.tipo);
+    (r.piezas || []).forEach((p) => { if (!r.solucion.some((s) => mateixa(s, p))) ds.peca(p, false); });
     r.solucion.forEach((s) => {
       if (s.cadena) {
         const g = (x, y) => [...r.fijas, ...r.solucion].find((q) => q.tipo && TK.radiEngranatge(q.tipo) && q.x === x && q.y === y);
@@ -180,8 +185,8 @@
         const g = r.solucion.find((q) => q.goma);
         if (g) { ds.linia(g.goma[0], g.goma[1], s.gatillo[2], s.gatillo[3], COLOR.negre, 0.6); ds.linia(g.goma[2], g.goma[3], s.gatillo[2], s.gatillo[3], COLOR.negre, 0.6); }
         ds.peca({ tipo: "pinza", x: s.gatillo[2], y: s.gatillo[3], angulo: s.angulo || 0 }, true);
-      } else if (s.desde) { if (!s.quitar) { const p = r.piezas.find((q) => q.x === s.desde[0] && q.y === s.desde[1]); ds.peca({ ...p, x: s.x ?? p.x, y: s.y ?? p.y, angulo: s.angulo ?? p.angulo }, true); } }
-      else ds.peca(s, true);
+      } else if (s.desde) { if (!s.quitar) { const p = r.piezas.find((q) => mateixa(s, q)); ds.peca({ ...p, x: s.x ?? p.x, y: s.y ?? p.y, angulo: s.angulo ?? p.angulo }, true); } }
+      else ds.peca(s.tipo === "pinza" ? { ...s, clavada: true } : s, true);
     });
   }
 
@@ -191,7 +196,7 @@
     if (v) for (const [a, b] of Object.entries(v)) s = s.split(`{${a}}`).join(b);
     return s;
   };
-  const posicio = (p) => `${cm(p.x)} ${F("cm")} · ${cm(p.y)} ${F("cm")}${p.angulo ? ` · ${p.angulo}°` : ""}`;
+  const posicio = (p) => `${cm(p.x)} ${F("cm")} · ${cm(p.y)} ${F("cm")}${p.angulo ? ` · ${Math.round(p.angulo)}°` : ""}`;
   function pasSolucio(s, r0) {
     if (s.cadena) {
       const g = (x, y) => r0.fijas.concat(r0.solucion).find((q) => q.tipo && TK.radiEngranatge(q.tipo) && q.x === x && q.y === y);
@@ -528,7 +533,10 @@
     dibuixarSolucio(ds, r);
     let yt = paragraf(doc, `${F("concepte")}: ${tr.concepte}`, xText, y + 11, ampleText, 9, [40, 50, 90]);
     yt = paragraf(doc, F("solucio") + ":", xText, yt + 1, ampleText, 8.5, [40, 50, 90]);
-    r.solucion.forEach((s) => { yt = paragraf(doc, "• " + pasSolucio(s, r), xText, yt, ampleText, 8, [40, 50, 90]); });
+    // Las espigas nuevas, todas en una línea (sujetan las piezas: ver el dibujo)
+    const espigues = r.solucion.filter((s) => s.tipo === "espiga");
+    if (espigues.length) yt = paragraf(doc, `• ${TK.nomPieza("espiga")} ×${espigues.length}: ${espigues.map((s) => `(${cm(s.x)}; ${cm(s.y)})`).join(" ")}`, xText, yt, ampleText, 8, [40, 50, 90]);
+    r.solucion.filter((s) => s.tipo !== "espiga").forEach((s) => { yt = paragraf(doc, "• " + pasSolucio(s, r), xText, yt, ampleText, 8, [40, 50, 90]); });
     if (r.manivela) yt = paragraf(doc, "• " + TK.t("ayudaManivela"), xText, yt, ampleText, 8, [40, 50, 90]);
     paragraf(doc, `${F("resposta")}: ${tr.pregunta.opciones.find((o) => o.correcta).texto}. ${tr.pregunta.explicacion}`, xText, yt + 1, ampleText, 8, [40, 50, 90]);
   }

@@ -465,3 +465,17 @@ Object.assign(TK.TEXTOS.en.ui, {
  "tut11": "Here's the challenge; Hint helps if you get stuck.",
  "tut12": "The house takes you back to the home screen."
 });
+
+/* Montaje con espigas, pinza clavada y gomas de tres medidas */
+Object.assign(TK.TEXTOS.en.piezas, {"gomaPetita":"Small rubber band","gomaGran":"Big rubber band"});
+Object.assign(TK.TEXTOS.en.ui, {
+ "posaEspigues": "Fix it with pegs in its holes: without pegs it will fall when you press ▶",
+ "unaEspiga": "With only one peg, the piece swings like a pendulum until it rests on something. With two, it stays fixed.",
+ "duesEspigues": "It has two pegs: take one out to turn it",
+ "pinzaSola": "A clothespin can't hang in the air: push it onto a peg or let it bite the end of a plank",
+ "faltaPinza": "First place a peg, a plank, a tube or a cone: the clothespin will hold on to it",
+ "tocaPinza": "Tap a peg (it goes on through the spring), the end of a plank, the mouth of a tube, the rim of a cone or a rubber band",
+ "noPinza": "The clothespin goes onto a peg or bites thin edges: the end of a plank, the mouth of a tube, the rim of a cone or a rubber band",
+ "tut2": "Drag a piece onto the board and fix it with pegs in its holes.",
+ "tut8": "Band, clothespin or chain: choose it, then tap where it hooks on (pegs, the end of a plank, two gears)."
+});
