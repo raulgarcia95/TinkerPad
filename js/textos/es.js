@@ -494,3 +494,5 @@ Object.assign(TK.TEXTOS.es.ui, {
  "tocaGoma2": "Ahora toca la otra espiga",
  "noGoma": "La goma solo se engancha en espigas (también las que atraviesan listones y bloques) o en el mango de una pinza"
 });
+
+TK.TEXTOS.es.ui.giraDispositiu = "Gira el dispositivo: Tinker Pad se juega en horizontal";

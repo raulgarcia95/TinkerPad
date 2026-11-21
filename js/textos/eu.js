@@ -494,3 +494,5 @@ Object.assign(TK.TEXTOS.eu.ui, {
  "tocaGoma2": "Orain ukitu beste ziria",
  "noGoma": "Goma ziriei bakarrik lotzen zaie (oholak eta blokeak zeharkatzen dituztenei ere) edo pintza baten kirtenari"
 });
+
+TK.TEXTOS.eu.ui.giraDispositiu = "Biratu gailua: Tinker Pad horizontalean jokatzen da";

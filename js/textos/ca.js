@@ -497,3 +497,5 @@ Object.assign(TK.TEXTOS.ca.ui, {
  "tocaGoma2": "Ara toca l'altra espiga",
  "noGoma": "La goma només s'enganxa a espigues (també les que travessen llistons i blocs) o al mànec d'una pinça"
 });
+
+TK.TEXTOS.ca.ui.giraDispositiu = "Gira el dispositiu: Tinker Pad es juga en horitzontal";

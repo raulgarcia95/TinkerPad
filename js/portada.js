@@ -125,7 +125,7 @@
 
   /** Barra superior: zona docente (izquierda), borrar el progreso (en medio), sonido e idioma (derecha). */
   const barraSuperior = () => `<div class="pt-dalt">
-      ${vista === "docent" || vista === "clau" ? "<span></span>" : `<button class="pt-docent-dalt" data-docent>${ICONO.docent}<span>${t("zonaDocent")}</span></button>`}
+      ${vista !== "inici" ? "<span></span>" : `<button class="pt-docent-dalt" data-docent>${ICONO.docent}<span>${t("zonaDocent")}</span></button>`}
       ${vista === "inici" ? `<button class="pt-esborrar-boto" data-esborrar>${ICONO.paperera}<span>${t("esborrar")}</span></button>` : ""}
       <div class="pt-dalt-dreta">
         <button class="pt-globus pt-so" data-so aria-pressed="${TK.audio.silenciat()}" aria-label="${t("silenci")}" title="${t("silenci")}">${TK.iconoSo(TK.audio.silenciat())}</button>

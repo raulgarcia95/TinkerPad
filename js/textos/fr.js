@@ -494,3 +494,5 @@ Object.assign(TK.TEXTOS.fr.ui, {
  "tocaGoma2": "Touche maintenant l'autre cheville",
  "noGoma": "L'élastique ne s'accroche qu'aux chevilles (même celles qui traversent les lattes et les blocs) ou au manche d'une pince"
 });
+
+TK.TEXTOS.fr.ui.giraDispositiu = "Tourne l'appareil : Tinker Pad se joue à l'horizontale";

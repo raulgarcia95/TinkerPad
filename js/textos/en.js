@@ -494,3 +494,5 @@ Object.assign(TK.TEXTOS.en.ui, {
  "tocaGoma2": "Now tap the other peg",
  "noGoma": "A band only hooks onto pegs (also the ones going through planks and blocks) or onto a clothespin handle"
 });
+
+TK.TEXTOS.en.ui.giraDispositiu = "Turn your device: Tinker Pad is played in landscape";

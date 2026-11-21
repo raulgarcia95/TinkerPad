@@ -494,3 +494,5 @@ Object.assign(TK.TEXTOS.gl.ui, {
  "tocaGoma2": "Agora toca a outra espiga",
  "noGoma": "A goma só se engancha en espigas (tamén as que atravesan listóns e bloques) ou no mango dunha pinza"
 });
+
+TK.TEXTOS.gl.ui.giraDispositiu = "Xira o dispositivo: Tinker Pad xógase en horizontal";
