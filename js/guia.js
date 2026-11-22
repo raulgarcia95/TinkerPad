@@ -517,13 +517,7 @@
         y += 29;
       });
     },
-    // 27 · Para saber más
-    () => {
-      const c = diapo(5, G("s26.t"));
-      vinyetes(G("s26.items"), M + 8, 38, 175, c, 13, 5);
-      peca("pinza", 238, 50, 40); peca("engranaje150", 252, 88, 44); peca("corcho", 222, 120, 24); peca("cono", 262, 128, 30);
-    },
-    // 28 · Cierre
+    // 27 · Cierre
     () => {
       diapo(5, null);
       doc.addImage(imgLogo, "PNG", (W - 160) / 2, 30, 160, 38.5, "logo", "FAST");
