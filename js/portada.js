@@ -192,6 +192,9 @@
         <div class="pt-doc-tots">
           <span class="pt-doc-etiq">${t("rubrica")}</span>${verBaixar(`data-rub="${d.id}"`, t("rubrica"))}
         </div>
+        <div class="pt-doc-tots">
+          <span class="pt-doc-etiq">${t("solucions")}</span>${verBaixar(`data-sol="${d.id}"`, t("solucions"))}
+        </div>
         <ul>${indices(d.id).map(([r, k]) => { const tr = TK.retoTraducit(r); return `<li><span class="pt-num petit">${r.num}</span>
           <span class="pt-doc-nom">${tr.nom}<small>${t(r.mesa ? "taula" : "panell")} · ${tr.concepte}</small></span>
           ${verBaixar(`data-fitxa="${k}"`, tr.nom)}</li>`; }).join("")}</ul>
@@ -266,6 +269,11 @@
     if (b.dataset.dif) {
       const retos = indices(b.dataset.dif).map(([r]) => r), nom = `tinkerpad-${b.dataset.dif}-${TK.idioma}.pdf`, titol = `${t("totesFitxes")} · ${TK.nomDificultat(b.dataset.dif)}`;
       return { veure: () => TK.Fitxa.veureFitxes(retos, mini, titol, nom), baixar: () => TK.Fitxa.descarregar(retos, mini, nom) };
+    }
+    // Soluciones para el docente de una dificultad (documento aparte de las fichas)
+    if (b.dataset.sol) {
+      const dif = b.dataset.sol, titol = `${t("solucions")} · ${TK.nomDificultat(dif)}`;
+      return { veure: () => TK.Fitxa.veureSolucions(dif, titol), baixar: () => TK.Fitxa.descarregarSolucions(dif) };
     }
     const dif = b.dataset.rub, titol = `${t("rubrica")} · ${TK.nomDificultat(dif)}`;
     return { veure: () => TK.Fitxa.veureRubrica(dif, mini, titol), baixar: () => TK.Fitxa.descarregarRubrica(dif, mini) };

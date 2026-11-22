@@ -431,7 +431,7 @@ Object.assign(TK.TEXTOS.es.ui, { faltaPinza: "Primero pon una espiga, un listón
 /* Cadenes */
 TK.TEXTOS.es.piezas.cadena = "Cadena";
 Object.assign(TK.TEXTOS.es.ui, { faltaCadena: "Primero pon dos engranajes: la cadena los unirá", tocaCadena1: "Toca el primer engranaje", tocaCadena2: "Ahora toca el segundo engranaje", noCadena: "La cadena se engancha en los dientes de los engranajes: toca un engranaje", cadenaAprop: "Demasiado cerca: estos engranajes se tocarían. Sepáralos un poco", cadenaLluny: "Demasiado lejos: la cadena más larga mide {n} cm", cadenaRepetida: "Estos engranajes ya tienen una cadena", cadenaMida: "Cadena de {n} cm: los dos engranajes girarán en el mismo sentido", cadenaSaltada: "La cadena ha saltado: los engranajes han quedado demasiado cerca o demasiado lejos" });
-Object.assign(TK.TEXTOS.es.fitxa, { cadena: "cadena de {n} cm entre los engranajes de ({a}) y ({b})" });
+Object.assign(TK.TEXTOS.es.fitxa, { cadenaPas: "cadena de {n} cm entre los engranajes de ({a}) y ({b})" });
 
 
 Object.assign(TK.TEXTOS.es.retos, {
@@ -496,3 +496,15 @@ Object.assign(TK.TEXTOS.es.ui, {
 });
 
 TK.TEXTOS.es.ui.giraDispositiu = "Gira el dispositivo: Tinker Pad se juega en horizontal";
+
+/* Fitxes sense part docent i document de solucions */
+Object.assign(TK.TEXTOS.es.fitxa, {
+ "apres": "¿Qué he aprendido? Escríbelo o dibújalo",
+ "solucionsTitol": "Soluciones para el docente",
+ "posaSol": "Piezas que se ponen",
+ "canvisSol": "Piezas que hay que arreglar",
+ "treuSol": "se quita",
+ "mouSol": "se cambia de sitio",
+ "giraSol": "se gira"
+});
+Object.assign(TK.TEXTOS.es.ui, {"solucions":"Soluciones"});

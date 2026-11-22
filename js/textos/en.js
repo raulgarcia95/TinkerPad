@@ -431,7 +431,7 @@ Object.assign(TK.TEXTOS.en.ui, { faltaPinza: "First add a peg, a slat, a tube or
 /* Cadenes */
 TK.TEXTOS.en.piezas.cadena = "Chain";
 Object.assign(TK.TEXTOS.en.ui, { faltaCadena: "First add two gears for the chain to join", tocaCadena1: "Tap the first gear", tocaCadena2: "Now tap the second gear", noCadena: "The chain fits onto gear teeth: tap a gear", cadenaAprop: "Too close: these gears would touch. Move them apart a little", cadenaLluny: "Too far: the longest chain is {n} cm", cadenaRepetida: "These gears already have a chain", cadenaMida: "{n} cm chain: both gears will turn the same way", cadenaSaltada: "The chain came off: the gears ended up too close or too far apart" });
-Object.assign(TK.TEXTOS.en.fitxa, { cadena: "{n} cm chain between the gears at ({a}) and ({b})" });
+Object.assign(TK.TEXTOS.en.fitxa, { cadenaPas: "{n} cm chain between the gears at ({a}) and ({b})" });
 
 
 Object.assign(TK.TEXTOS.en.retos, {
@@ -496,3 +496,15 @@ Object.assign(TK.TEXTOS.en.ui, {
 });
 
 TK.TEXTOS.en.ui.giraDispositiu = "Turn your device: Tinker Pad is played in landscape";
+
+/* Fitxes sense part docent i document de solucions */
+Object.assign(TK.TEXTOS.en.fitxa, {
+ "apres": "What have I learned? Write it or draw it",
+ "solucionsTitol": "Solutions for the teacher",
+ "posaSol": "Pieces to add",
+ "canvisSol": "Pieces to fix",
+ "treuSol": "is removed",
+ "mouSol": "is moved",
+ "giraSol": "is turned"
+});
+Object.assign(TK.TEXTOS.en.ui, {"solucions":"Solutions"});

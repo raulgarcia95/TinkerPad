@@ -248,24 +248,30 @@
     }
     const interno = new T.Group();
     interno.add(TK.extruir(TK.formaEngranaje(r, n, huecos), M.madera, { prof: 0.12, bisel: 0.01, z: 0.12 }));
-    // Biela: espiga excéntrica en las ruedas grandes (empuja bolas o toca la campana)
+    // Biela: espiga clavada en las ruedas grandes. Es una espiga como las demás:
+    // empuja bolas, toca la campana y se le pueden enganchar gomas y pinzas.
+    // (Fuera de `interno`, que se gira solo para alinear los dientes: así se ve
+    // justo donde está su collider.)
+    let biela = null, mallaBiela = null;
     if (r >= 60) {
       const a = Math.PI / m, d = 0.8 * r;
-      const bx = d * Math.cos(a), by = d * Math.sin(a); // en unidades del plano local Three (Y arriba)
+      const bx = d * Math.cos(a), by = d * Math.sin(a); // en px, plano local con Y arriba
       bola(ctx, rueda, 6, "madera", { x: bx, y: -by });
-      const e = TK.espiga(0.55);
-      e.position.set(bx * S, by * S, 0.2);
-      interno.add(e);
+      mallaBiela = TK.espiga(0.55);
+      mallaBiela.position.set(bx * S, by * S, 0.2);
+      biela = { x: bx, y: -by }; // px locales de la pieza (Y abajo)
     }
     (extra.adornos || []).forEach((a) => interno.add(a));
     // Sin espiga en el agujero del centro, la rueda no tiene eje: cae
     const libre = suelta(p, ctx);
     if (!libre) ctx.mundo.createImpulseJoint(R().JointData.revolute({ x: 0, y: 0 }, { x: 0, y: 0 }), eje, rueda, true).setContactsEnabled(false);
-    const gR = grupo([interno]);
+    const gR = grupo([interno, mallaBiela]);
     // Las de los retos llevan su eje atornillado; las demás se ponen sobre una espiga
     const gE = p.fija ? fijo(grupo([TK.espiga(0.62)]), p.x, p.y) : null;
     const i = instancia(p, ctx, [eje, rueda], grupo([gR, gE]), () => posar(gR, rueda), extra.instancia);
-    i.engranaje = { rb: rueda, r, n, x: p.x, y: p.y, interno, suelto: libre };
+    i.engranaje = { rb: rueda, r, n, x: p.x, y: p.y, interno, suelto: libre, biela };
+    // Cuerpo que se mueve con un punto local de la pieza (gomas y pinzas enganchadas a la biela)
+    i.cuerpoDe = (l) => (l && (l.x || l.y) ? rueda : eje);
     // Roce seco del eje: una rueda suelta no gira sola por el peso de su
     // espiga excéntrica (como en el panel real); la manivela la vence sin esfuerzo.
     i.friccion = () => {
@@ -406,7 +412,7 @@
    * mueve (goma enganchada a un listón que cuelga de una sola espiga, por ejemplo).
    * Devuelve paso(), los extremos actuales (a, b) y los contactos para dibujarla.
    */
-  function fisicaGoma(ctx, a, b, mida = 1, moverA = null, moverB = null) {
+  function fisicaGoma(ctx, a, b, mida = 1, moverA = null, moverB = null, cuerpoA = null, cuerpoB = null) {
     const { MU } = TK.GOMA, K = TK.GOMA.K / mida, L0 = TK.GOMA.L0 * S * mida;
     let d, C, u, n;
     const medir = () => {
@@ -422,10 +428,25 @@
     const f = { contactos: [], estirado: 0, a, b, ignorar: new Set() }; // ignorar: cuerpos donde está enganchada
     f.paso = () => {
       const dt = ctx.mundo.timestep;
+      if (f.rota) return;
       if (moverA || moverB) {
         if (moverA) a = f.a = moverA();
         if (moverB) b = f.b = moverB();
         medir();
+        // Estirada de más (una rueda que gira y la arrastra): se rompe
+        if (d > TK.GOMA.MAX * S * mida) {
+          f.rota = true;
+          f.contactos = [];
+          TK.audio.boing();
+          return;
+        }
+        // Tensa, tira de los extremos que se mueven hacia el otro: hace de muelle
+        const estira = d - L0;
+        if (estira > 0) {
+          const J = K * estira * dt;
+          if (cuerpoA && moverA) cuerpoA.applyImpulseAtPoint({ x: u.x * J, y: u.y * J }, a, true);
+          if (cuerpoB && moverB) cuerpoB.applyImpulseAtPoint({ x: -u.x * J, y: -u.y * J }, b, true);
+        }
       }
       f.contactos = [];
       ctx.mundo.forEachCollider((col) => {
@@ -703,7 +724,12 @@
       nombre: "Pinça", rotable: true, engancha: "pinza",
       crear(p, ctx) {
         const m = mallaPinza();
-        const hostRb = ctx.jugando && p.host && p.host.inst && !p.goma && !p.clavada ? p.host.inst.cuerpos[0] : null;
+        // Lo que sostiene la pinza: la pieza que muerde, o (clavada) la biela de una rueda, que gira
+        let hostRb = null;
+        if (ctx.jugando && p.host && p.host.inst && !p.goma) {
+          if (!p.clavada) hostRb = p.host.inst.cuerpos[0];
+          else if (p.host.inst.cuerpoDe) hostRb = p.host.inst.cuerpoDe(p.pal);
+        }
         const mueve = !!(hostRb && hostRb.isDynamic());
         let col = null, boca = null;
         const i = piezaSimple(p, ctx, mueve ? "dinamico" : "fijo", (rb) => {
@@ -871,15 +897,20 @@
         // Atada alrededor de un tubo o un cono (p.lligam): lo sujeta, no rebota
         if (p.lligam) return instancia(p, ctx, [rb], grupo(hijos), () => dibujo.dibujar(a, b, []));
         // Si la pieza donde está enganchada se mueve, el extremo la sigue
+        // (la biela de un engranaje se mueve con la rueda, no con su eje)
+        const cuerpoDe = (host, l) => (ctx.jugando && host && host.inst ? (host.inst.cuerpoDe ? host.inst.cuerpoDe(l) : host.inst.cuerpos[0]) : null);
         const movil = (host, l) => {
-          const hb = ctx.jugando && host && host.inst && host.inst.cuerpos[0];
+          const hb = cuerpoDe(host, l);
           if (!hb || !hb.isDynamic()) return null;
           const lx = ((l && l.x) || 0) * S, ly = -((l && l.y) || 0) * S;
           return () => { const t = hb.translation(), r = hb.rotation(), c = Math.cos(r), s = Math.sin(r); return { x: t.x + c * lx - s * ly, y: t.y + s * lx + c * ly }; };
         };
-        const fis = fisicaGoma(ctx, a, b, mida, movil(p.a, p.la), movil(p.b, p.lb));
+        const fis = fisicaGoma(ctx, a, b, mida, movil(p.a, p.la), movil(p.b, p.lb), cuerpoDe(p.a, p.la), cuerpoDe(p.b, p.lb));
         for (const h of [p.a, p.b]) if (ctx.jugando && h && h.inst) h.inst.cuerpos.forEach((c) => fis.ignorar.add(c.handle));
-        const i = instancia(p, ctx, [rb], grupo(hijos), () => dibujo.dibujar(fis.a, fis.b, fis.contactos));
+        const i = instancia(p, ctx, [rb], grupo(hijos), () => {
+          dibujo.raiz.visible = !fis.rota; // rota: ya no se ve
+          dibujo.dibujar(fis.a, fis.b, fis.contactos);
+        });
         i.paso = fis.paso;
         return i;
       },

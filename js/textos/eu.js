@@ -431,7 +431,7 @@ Object.assign(TK.TEXTOS.eu.ui, { faltaPinza: "Lehenengo jarri ziri bat, ohol bat
 /* Cadenes */
 TK.TEXTOS.eu.piezas.cadena = "Katea";
 Object.assign(TK.TEXTOS.eu.ui, { faltaCadena: "Lehenengo jarri bi engranaje: kateak lotuko ditu", tocaCadena1: "Ukitu lehen engranajea", tocaCadena2: "Orain ukitu bigarren engranajea", noCadena: "Katea engranajeen hortzetan lotzen da: ukitu engranaje bat", cadenaAprop: "Hurbilegi: engranaje hauek ukituko lukete elkar. Aldendu pixka bat", cadenaLluny: "Urrunegi: katerik luzeenak {n} cm ditu", cadenaRepetida: "Engranaje hauek badute katea", cadenaMida: "{n} cm-ko katea: bi engranajeek noranzko berean biratuko dute", cadenaSaltada: "Katea atera da: engranajeak hurbilegi edo urrunegi geratu dira" });
-Object.assign(TK.TEXTOS.eu.fitxa, { cadena: "{n} cm-ko katea ({a}) eta ({b}) engranajeen artean" });
+Object.assign(TK.TEXTOS.eu.fitxa, { cadenaPas: "{n} cm-ko katea ({a}) eta ({b}) engranajeen artean" });
 
 
 Object.assign(TK.TEXTOS.eu.retos, {
@@ -496,3 +496,15 @@ Object.assign(TK.TEXTOS.eu.ui, {
 });
 
 TK.TEXTOS.eu.ui.giraDispositiu = "Biratu gailua: Tinker Pad horizontalean jokatzen da";
+
+/* Fitxes sense part docent i document de solucions */
+Object.assign(TK.TEXTOS.eu.fitxa, {
+ "apres": "Zer ikasi dut? Idatzi edo marraztu",
+ "solucionsTitol": "Irakaslearentzako soluzioak",
+ "posaSol": "Jartzen diren piezak",
+ "canvisSol": "Konpondu behar diren piezak",
+ "treuSol": "kendu egiten da",
+ "mouSol": "lekuz aldatzen da",
+ "giraSol": "biratu egiten da"
+});
+Object.assign(TK.TEXTOS.eu.ui, {"solucions":"Soluzioak"});

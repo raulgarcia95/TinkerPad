@@ -683,7 +683,7 @@
     const guia = enganche && enganche.tipo === "cadena"
       ? estado.piezas.filter((r) => r.inst && TK.radiEngranatge(r.tipo) && r !== enganche.a)
       : enganche && enganche.tipo === "pinza"
-      ? estado.piezas.filter((r) => r.inst && (esEspiga(r) || (!enganche.goma && ((r.tipo in AGARRE) || (r.tipo === "goma" && !r.tensor)))))
+      ? estado.piezas.filter((r) => r.inst && (esEspiga(r) || (!enganche.goma && (bielaDe(r) || (r.tipo in AGARRE) || (r.tipo === "goma" && !r.tensor)))))
       : [];
     // Con la pista, en rojo: las piezas con error y las que caerán por no tener ninguna espiga
     const errores = (estado.pista && !estado.jugando ? estado.piezas.filter((r) => r.inst && (r.error || sinEspigues(r))) : []).concat(guia);
@@ -761,7 +761,7 @@
     actualizarDependientes(rec);
   }
   /** Una pinza que muerde un listón no gira sola: gira con el listón. */
-  const puedeGirar = (rec) => TK.PIEZAS[rec.tipo].rotable && !(rec.tipo === "pinza" && rec.host && !esEspiga(rec.host));
+  const puedeGirar = (rec) => TK.PIEZAS[rec.tipo].rotable && !(rec.tipo === "pinza" && rec.host && !rec.clavada);
   function rotar(rec, dir) {
     if (!rec || rec.fija || estado.jugando || !puedeGirar(rec)) return;
     // Con una espiga en un agujero, la pieza gira sobre ella; con dos, no puede girar
@@ -807,6 +807,23 @@
      muerde una espiga o el borde de un listón (rampa cóncava, cono).
      Gomas y pinzas siguen a su espiga o listón si este se mueve o gira. */
   const esEspiga = (r) => !!r && ESPIGAS.includes(r.tipo);
+  /** Espiga que lleva clavada una rueda dentada grande (px locales), o null. */
+  const bielaDe = (r) => (r && r.inst && r.inst.engranaje && r.inst.engranaje.biela) || null;
+  /**
+   * Espiga más cercana al punto, también las de las ruedas dentadas (se comportan
+   * igual): {host, pal (punto local en la pieza), x, y}.
+   */
+  function palEn(pt) {
+    const lim = tolerancia * 2 + 4;
+    let mejor = null, dmin = lim;
+    for (const r of estado.piezas) {
+      const b = bielaDe(r), pal = esEspiga(r) ? { x: 0, y: 0 } : b ? { x: b.x, y: b.y } : null;
+      if (!pal) continue;
+      const p = aPanel(r, pal), d = distancia(p, pt);
+      if (d < dmin) { dmin = d; mejor = { host: r, pal, x: p.x, y: p.y }; }
+    }
+    return mejor;
+  }
   const dependientes = (rec) => estado.piezas.filter((r) => r.a === rec || r.b === rec || r.host === rec || r.goma === rec);
   const distancia = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 
@@ -857,9 +874,9 @@
   }
   /** Pinza clavada por el muelle en su espiga: la punta queda a MUELLE px según el ángulo. */
   function posarClavada(rec) {
-    const h = rec.host, a = rec.angulo || 0;
-    rec.x = h.x - MUELLE * Math.cos(a);
-    rec.y = h.y - MUELLE * Math.sin(a);
+    const h = rec.host, a = rec.angulo || 0, c = aPanel(h, rec.pal || { x: 0, y: 0 });
+    rec.x = c.x - MUELLE * Math.cos(a);
+    rec.y = c.y - MUELLE * Math.sin(a);
     rec.local = { x: rec.x - h.x, y: rec.y - h.y, ang: a - (h.angulo || 0) };
   }
   /** Espigas puestas en todos los agujeros de la pieza que caen en un agujero del panel. */
@@ -926,7 +943,8 @@
       if (!r.inst) continue;
       // Una goma s'enganxa a espigues (també les que travessen un llistó o un bloc) o al mànec d'una pinça;
       // un forat buit no la pot aguantar
-      const locales = esEspiga(r) ? [[0, 0]] : r.tipo === "pinza" && !r.goma ? MANGO_PINZA : null;
+      const b = bielaDe(r);
+      const locales = esEspiga(r) ? [[0, 0]] : b ? [[b.x, b.y]] : r.tipo === "pinza" && !r.goma ? MANGO_PINZA : null;
       if (!locales) continue;
       for (const [x, y] of locales) out.push({ host: r, local: { x, y }, ...aPanel(r, { x, y }) });
     }
@@ -1009,7 +1027,7 @@
     }
     return false;
   }
-  const guardarPos = (rec) => ({ x: rec.x, y: rec.y, angulo: rec.angulo, host: rec.host, clavada: rec.clavada, local: rec.local ? { ...rec.local } : undefined });
+  const guardarPos = (rec) => ({ x: rec.x, y: rec.y, angulo: rec.angulo, host: rec.host, clavada: rec.clavada, pal: rec.pal, local: rec.local ? { ...rec.local } : undefined });
   function ponerPos(rec, p) {
     Object.assign(rec, p, { local: p.local ? { ...p.local } : undefined });
     rec.choca = false;
@@ -1056,10 +1074,11 @@
    * espiga, o mordiendo la punta de un listón, la boca de un tubo o el aro de un cono.
    */
   function anclajePinza(pt, anguloEspiga) {
-    const espiga = espigaEn(pt);
-    if (espiga) {
+    // Espigas sueltas o las de las ruedas dentadas: la pinza se clava por el muelle
+    const pal = palEn(pt);
+    if (pal) {
       const a = anguloEspiga || 0;
-      return { host: espiga, clavada: true, x: espiga.x - MUELLE * Math.cos(a), y: espiga.y - MUELLE * Math.sin(a), angulo: a };
+      return { host: pal.host, pal: pal.pal, clavada: true, x: pal.x - MUELLE * Math.cos(a), y: pal.y - MUELLE * Math.sin(a), angulo: a };
     }
     const q = { x: TK.X(pt.x), y: TK.Y(pt.y) }, lim = (tolerancia + 6) * S;
     let mejor = null, dmin = Infinity;
@@ -1109,7 +1128,7 @@
   function fijarEnHost(rec, anc) {
     const h = anc.host, ha = h.angulo || 0, cs = Math.cos(ha), sn = Math.sin(ha);
     const dx = anc.x - h.x, dy = anc.y - h.y;
-    Object.assign(rec, { host: h, x: anc.x, y: anc.y, angulo: anc.angulo, clavada: !!anc.clavada });
+    Object.assign(rec, { host: h, x: anc.x, y: anc.y, angulo: anc.angulo, clavada: !!anc.clavada, pal: anc.pal ? { ...anc.pal } : undefined });
     rec.local = { x: cs * dx + sn * dy, y: -sn * dx + cs * dy, ang: anc.angulo - ha };
   }
   /** Recoloca la pinza tras mover o girar la pieza que muerde. */
@@ -1272,7 +1291,7 @@
   function hayDondeEnganchar(tipo) {
     if (tipo === "goma") return puntosGoma().length >= 2;
     if (tipo === "cadena") return estado.piezas.filter((r) => TK.radiEngranatge(r.tipo)).length >= 2;
-    return estado.piezas.some((r) => esEspiga(r) || (r.tipo in AGARRE) || r.tipo === "goma");
+    return estado.piezas.some((r) => esEspiga(r) || bielaDe(r) || (r.tipo in AGARRE) || r.tipo === "goma");
   }
   /** tipo: goma, pinza o cadena; ficha: la pieza del repositorio (gomaPetita, goma, gomaGran…). */
   function empezarEnganche(tipo, ficha = tipo) {
@@ -1649,8 +1668,8 @@
   /** Copia del montaje para guardarlo; los enganches se guardan como índices. */
   function copiarMontaje(lista) {
     const idx = (r) => (r ? lista.indexOf(r) : undefined);
-    return lista.map(({ tipo, x, y, angulo, fija, error, bola, contrapeso, puesta, a, b, host, local, la, lb, pa, pb, goma, tensor, mida, clavada }) => ({
-      tipo, x, y, angulo, fija, error, bola, contrapeso, puesta, mida, clavada,
+    return lista.map(({ tipo, x, y, angulo, fija, error, bola, contrapeso, puesta, a, b, host, local, la, lb, pa, pb, goma, tensor, mida, clavada, pal }) => ({
+      tipo, x, y, angulo, fija, error, bola, contrapeso, puesta, mida, clavada, pal: pal ? { ...pal } : undefined,
       a: idx(a), b: idx(b), host: idx(host), goma: idx(goma), tensor: idx(tensor),
       local: local ? { ...local } : undefined, la, lb, pa, pb,
     }));

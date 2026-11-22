@@ -196,24 +196,6 @@
     if (v) for (const [a, b] of Object.entries(v)) s = s.split(`{${a}}`).join(b);
     return s;
   };
-  const posicio = (p) => `${cm(p.x)} ${F("cm")} · ${cm(p.y)} ${F("cm")}${p.angulo ? ` · ${Math.round(p.angulo)}°` : ""}`;
-  function pasSolucio(s, r0) {
-    if (s.cadena) {
-      const g = (x, y) => r0.fijas.concat(r0.solucion).find((q) => q.tipo && TK.radiEngranatge(q.tipo) && q.x === x && q.y === y);
-      const A = g(s.cadena[0], s.cadena[1]), B = g(s.cadena[2], s.cadena[3]);
-      const mida = A && B ? TK.midaCadena(A, B) : "";
-      return F("cadena", { n: mida, a: `${cm(s.cadena[0])}; ${cm(s.cadena[1])}`, b: `${cm(s.cadena[2])}; ${cm(s.cadena[3])}` });
-    }
-    if (s.goma) return F("goma", { a: `${cm(s.goma[0])}; ${cm(s.goma[1])}`, b: `${cm(s.goma[2])}; ${cm(s.goma[3])}` });
-    if (s.gatillo) return F("gatill", { a: `${cm(s.gatillo[2])}; ${cm(s.gatillo[3])}` });
-    if (s.desde) {
-      const a = `${cm(s.desde[0])}; ${cm(s.desde[1])}`;
-      if (s.quitar) return F("treure", { a });
-      if (s.x !== undefined) return F("moure", { a, b: `${cm(s.x)}; ${cm(s.y)}` });
-      return F("girar", { a, g: s.angulo });
-    }
-    return `${TK.nomPieza(s.tipo)}: ${posicio(s)}`;
-  }
   function condicions(r) {
     const cond = [];
     if (r.solo) cond.push(F("nomesPeces", { p: r.solo.map(TK.nomPieza).join(", ") }));
@@ -377,7 +359,7 @@
     // Pregunta del reto
     y = paragraf(doc, tr.pregunta.texto, M, y, A4.w - 2 * M, 12, COLOR.tinta, true) + 1;
     tr.pregunta.opciones.forEach((o) => { y = casella(doc, M + 4, y + 2, o.texto, A4.w - 2 * M - 4, 12) + 1.5; });
-    caixaDocent(doc, r, tr, y + 3);
+    caixaApres(doc, y + 4);
   }
 
   function paginaMitja1(doc, r, tr, imgLogo, miniaturas, dificil) {
@@ -404,9 +386,9 @@
     const col = (A4.w - 2 * M) / 2;
     let y1 = paragraf(doc, F("fix"), M, y, col - 4, 8.5, COLOR.suau);
     m.tipus.forEach((tp, k) => {
+      // Solo la pieza y cuántas hay (el número es el del dibujo)
       const grup = m.peces.filter((p) => p.tipo === tp);
-      const llocs = grup.length <= (dificil ? 4 : 2) ? "  " + grup.map((p) => `(${posicio(p)})`).join(" ") : "";
-      y1 = paragraf(doc, `${k + 1}. ${grup.length > 1 ? grup.length + " × " : ""}${TK.nomPieza(tp)}${llocs}`, M, y1, col - 4, 8.5);
+      y1 = paragraf(doc, `${k + 1}. ${grup.length > 1 ? grup.length + " × " : ""}${TK.nomPieza(tp)}`, M, y1, col - 4, 9);
     });
     let y2 = paragraf(doc, F(dificil ? "afegirDif" : "afegir"), M + col, y, col, 8.5, COLOR.suau);
     if (!dificil) {
@@ -482,7 +464,7 @@
     y = fila(tr.pregunta.texto, tr.pregunta.opciones.map((o) => o.texto), y);
     y = fila(comun.estrategias.texto, comun.estrategias.opciones.map((o) => o.texto), y);
     y = fila(F("reinventa"), tr.reinventar.map((v) => v.texto), y);
-    caixaDocent(doc, r, tr, y + 2);
+    caixaApres(doc, y + 3);
   }
 
   function paginaDificil2(doc, r, tr, imgLogo) {
@@ -516,29 +498,88 @@
     doc.text(F("justifica"), M, y + 3);
     y = linies(doc, M, y + 1, A4.w - 2 * M, 2, 6.5);
     y = paragraf(doc, `${F("reinventa")}: ${tr.reinventar.map((v) => v.texto).join(" · ")}`, M, y + 1, A4.w - 2 * M, 8.5, COLOR.suau);
-    caixaDocent(doc, r, tr, y + 1);
+    caixaApres(doc, y + 3);
   }
 
-  /** Parte del docente: concepto y una solución dibujada y explicada. */
-  function caixaDocent(doc, r, tr, y) {
-    const altDoc = A4.h - 14 - y;
-    if (altDoc < 30) return;
-    doc.setFillColor(238, 240, 246); doc.setDrawColor(...COLOR.docent); doc.setLineWidth(0.3);
-    doc.roundedRect(M, y, A4.w - 2 * M, altDoc, 2, 2, "FD");
-    doc.setFont("helvetica", "bold"); doc.setFontSize(10.5); doc.setTextColor(...COLOR.docent);
-    doc.text(F("docent"), M + 4, y + 6);
-    const mida = TK.midaRepte(r), ampleDib = Math.min(78, (altDoc - 13) * mida.W / mida.H), xText = M + ampleDib + 10, ampleText = A4.w - M - 4 - xText;
-    const ds = dibuixant(doc, M + 4, y + 10, ampleDib, mida);
+  /**
+   * Final de la segunda página: un recuadro con líneas para escribir o dibujar lo
+   * aprendido, que llena el espacio que queda (la parte del docente va aparte,
+   * en el documento de soluciones).
+   */
+  function caixaApres(doc, y) {
+    const alt = A4.h - 14 - y;
+    if (alt < 18) return;
+    y = titol(doc, F("apres"), y + 3, 11);
+    const h = A4.h - 14 - y;
+    doc.setDrawColor(...COLOR.forat); doc.setLineWidth(0.3);
+    doc.roundedRect(M, y - 1, A4.w - 2 * M, h, 2, 2, "S");
+    for (let ly = y + 7; ly < y - 1 + h - 3; ly += 7.5) doc.line(M + 4, ly, A4.w - M - 4, ly);
+  }
+
+  /* ---------- Soluciones para el docente (documento aparte) ---------- */
+  /** Nombre de una pieza de la solución, con la medida de las gomas y las cadenas. */
+  function pecaSolucio(s, r) {
+    if (s.cadena) {
+      const g = (x, y) => r.fijas.concat(r.solucion).find((q) => q.tipo && TK.radiEngranatge(q.tipo) && q.x === x && q.y === y);
+      const A = g(s.cadena[0], s.cadena[1]), B = g(s.cadena[2], s.cadena[3]), n = A && B ? TK.midaCadena(A, B) : null;
+      return TK.nomPieza("cadena") + (n ? ` ${n} cm` : "");
+    }
+    if (s.goma) return TK.nomPieza(s.mida === TK.GOMA.MIDES.gomaPetita ? "gomaPetita" : s.mida === TK.GOMA.MIDES.gomaGran ? "gomaGran" : "goma");
+    if (s.gatillo) return TK.nomPieza("pinza");
+    return TK.nomPieza(s.tipo);
+  }
+  /** Piezas que se añaden (agrupadas: "3 × Espiga") y cambios en piezas ya puestas. */
+  function resumSolucio(r) {
+    const posa = new Map(), canvis = [];
+    for (const s of r.solucion || []) {
+      if (s.desde) {
+        const p = (r.piezas || []).find((q) => q.x === s.desde[0] && q.y === s.desde[1] && (!s.tipo || q.tipo === s.tipo));
+        const nom = TK.nomPieza((p && p.tipo) || s.tipo);
+        canvis.push(`${nom}: ${F(s.quitar ? "treuSol" : s.x !== undefined ? "mouSol" : "giraSol")}`);
+        continue;
+      }
+      const nom = pecaSolucio(s, r);
+      posa.set(nom, (posa.get(nom) || 0) + 1);
+    }
+    return { posa: [...posa].map(([nom, n]) => (n > 1 ? `${n} × ${nom}` : nom)), canvis };
+  }
+  /** Un reto en el documento de soluciones: dibujo de la solución a la izquierda y explicación a la derecha. */
+  function blocSolucio(doc, r, y, alt) {
+    const tr = TK.retoTraducit(r), c = colorDif[r.dificultat];
+    doc.setFillColor(...clar(c, 0.88)); doc.setDrawColor(...c); doc.setLineWidth(0.4);
+    doc.roundedRect(M, y, A4.w - 2 * M, alt, 3, 3, "FD");
+    doc.setFillColor(...c); doc.roundedRect(M, y, A4.w - 2 * M, 10, 3, 3, "F"); doc.rect(M, y + 5, A4.w - 2 * M, 5, "F");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(255, 255, 255);
+    doc.text(`${TK.tituloReto(r)} · ${tr.nom}`, M + 4, y + 6.8);
+    // Dibujo grande a la izquierda; concepto y piezas a la derecha; objetivo y respuesta debajo, a todo el ancho
+    const mida = TK.midaRepte(r), ampleDib = 122, xText = M + ampleDib + 11, ampleText = A4.w - M - 4 - xText, tinta = [40, 50, 90];
+    const ds = dibuixant(doc, M + 5, y + 16, ampleDib, mida);
     ds.tauler();
     dibuixarSolucio(ds, r);
-    let yt = paragraf(doc, `${F("concepte")}: ${tr.concepte}`, xText, y + 11, ampleText, 9, [40, 50, 90]);
-    yt = paragraf(doc, F("solucio") + ":", xText, yt + 1, ampleText, 8.5, [40, 50, 90]);
-    // Las espigas nuevas, todas en una línea (sujetan las piezas: ver el dibujo)
-    const espigues = r.solucion.filter((s) => s.tipo === "espiga");
-    if (espigues.length) yt = paragraf(doc, `• ${TK.nomPieza("espiga")} ×${espigues.length}: ${espigues.map((s) => `(${cm(s.x)}; ${cm(s.y)})`).join(" ")}`, xText, yt, ampleText, 8, [40, 50, 90]);
-    r.solucion.filter((s) => s.tipo !== "espiga").forEach((s) => { yt = paragraf(doc, "• " + pasSolucio(s, r), xText, yt, ampleText, 8, [40, 50, 90]); });
-    if (r.manivela) yt = paragraf(doc, "• " + TK.t("ayudaManivela"), xText, yt, ampleText, 8, [40, 50, 90]);
-    paragraf(doc, `${F("resposta")}: ${tr.pregunta.opciones.find((o) => o.correcta).texto}. ${tr.pregunta.explicacion}`, xText, yt + 1, ampleText, 8, [40, 50, 90]);
+    let yr = paragraf(doc, `${F("concepte")}: ${tr.concepte}`, xText, y + 16, ampleText, 9, tinta, true);
+    const { posa, canvis } = resumSolucio(r);
+    if (canvis.length) { yr = paragraf(doc, F("canvisSol"), xText, yr + 1.5, ampleText, 9, c, true); canvis.forEach((t) => { yr = paragraf(doc, "• " + t, xText, yr, ampleText, 8.5, tinta); }); }
+    if (posa.length) { yr = paragraf(doc, F("posaSol"), xText, yr + 1.5, ampleText, 9, c, true); posa.forEach((t) => { yr = paragraf(doc, "• " + t, xText, yr, ampleText, 8.5, tinta); }); }
+    if (r.manivela) yr = paragraf(doc, "• " + TK.t("ayudaManivela"), xText, yr + 1, ampleText, 8.5, tinta);
+    const ok = tr.pregunta.opciones.find((o) => o.correcta);
+    let yb = Math.max(y + 16 + ds.alt + 5, yr + 2);
+    yb = paragraf(doc, `${F("objectiu")}: ${tr.enunciado}`, M + 5, yb, A4.w - 2 * M - 10, 9, tinta);
+    yb = paragraf(doc, `${F("resposta")}: ${ok ? ok.texto + ". " : ""}${tr.pregunta.explicacion}`, M + 5, yb + 1, A4.w - 2 * M - 10, 9, tinta);
+    return yb;
+  }
+  /** Páginas de soluciones: dos retos por página. */
+  function paginesSolucions(doc, retos, imgLogo, primera) {
+    const alt = (A4.h - 30 - 14 - 6) / 2;
+    retos.forEach((r, k) => {
+      if (k % 2 === 0) {
+        if (k || !primera) doc.addPage("a4", "portrait");
+        doc.addImage(imgLogo, "PNG", M, 8, 50, 12, "logo", "FAST");
+        doc.setFont("helvetica", "bold"); doc.setFontSize(13); doc.setTextColor(...COLOR.docent);
+        doc.text(F("solucionsTitol"), A4.w - M, 16, { align: "right" });
+        peu(doc, `${F("solucionsTitol")} · ${F("pagina", { n: Math.floor(k / 2) + 1 })}`);
+      }
+      blocSolucio(doc, r, 26 + (k % 2) * (alt + 6), alt);
+    });
   }
 
   /* ---------- Rúbricas ---------- */
@@ -664,6 +705,13 @@
     });
     return docExistent ? doc : doc.output("blob");
   }
+  /** PDF de soluciones para el docente (Blob). Con `doc`, las añade a ese documento. */
+  async function solucions(retos, docExistent) {
+    const doc = docExistent || nouDoc();
+    const imgLogo = await logo();
+    paginesSolucions(doc, retos, imgLogo, !docExistent);
+    return docExistent ? doc : doc.output("blob");
+  }
   /** PDF con las rúbricas de una dificultad: portada + una tabla por reto. Con `doc`, las añade. */
   async function rubriques(dif, miniaturas, docExistent) {
     const doc = docExistent || nouDoc("landscape");
@@ -696,6 +744,7 @@
       separador(doc, TK.nomDificultat(d.id), TK.t("edat_" + d.id), colorDif[d.id], imgLogo);
       await fitxes(TK.RETOS.filter((r) => r.dificultat === d.id), miniaturas, doc);
       await rubriques(d.id, miniaturas, doc);
+      await solucions(TK.RETOS.filter((r) => r.dificultat === d.id), doc);
     }
     return doc.output("blob");
   }
@@ -730,6 +779,13 @@
     const blob = await fitxes(retos, miniaturas);
     if (nomesBlob) return { blob };
     await guardar(blob, nomFitxes(retos, nomFitxer));
+  }
+  const nomSolucions = (dif) => `tinkerpad-solucions-${dif}-${TK.idioma}.pdf`;
+  async function descarregarSolucions(dif, nomesBlob) {
+    if (!window.jspdf) { alert(TK.t("pdfNo")); return; }
+    const blob = await solucions(TK.RETOS.filter((r) => r.dificultat === dif));
+    if (nomesBlob) return { blob };
+    await guardar(blob, nomSolucions(dif));
   }
   async function descarregarRubrica(dif, miniaturas, nomesBlob) {
     if (!window.jspdf) { alert(TK.t("pdfNo")); return; }
@@ -800,10 +856,11 @@
   else iniciarVisor();
 
   TK.Fitxa = {
-    descarregar, descarregarRubrica, fitxes, rubriques, documentComplet,
+    descarregar, descarregarRubrica, descarregarSolucions, fitxes, rubriques, solucions, documentComplet,
     // Para la guía docente (js/guia.js): dibujo de retos, iconos, logotipo, guardar y visor
     eines: { dibuixant, dibuixarSolucio, icona, cara, logo, guardar, veure, COLOR, colorDif, clar },
     veureFitxes: (retos, miniaturas, titolVisor, nom) => veure(titolVisor, () => fitxes(retos, miniaturas), nomFitxes(retos, nom)),
     veureRubrica: (dif, miniaturas, titolVisor) => veure(titolVisor, () => rubriques(dif, miniaturas), nomRubrica(dif)),
+    veureSolucions: (dif, titolVisor) => veure(titolVisor, () => solucions(TK.RETOS.filter((r) => r.dificultat === dif)), nomSolucions(dif)),
   };
 })();

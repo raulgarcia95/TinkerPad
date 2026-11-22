@@ -70,6 +70,7 @@ En la barra y en la portada: marca verde = superado, naranja = intentado sin sup
   - con **dos o más**, queda fija.
   - Las piezas fijas de los retos van atornilladas (tornillos de latón). Los dominós y el coche van sueltos.
   - Una pieza que cae porque no tiene espigas no cuenta para tocar la campana o la meta.
+- **Espiga de las ruedas dentadas grandes** (150 y 200 mm): es una espiga como las demás. Las bolas chocan con ella y se le pueden enganchar gomas y clavar pinzas, que giran con la rueda. Una goma enganchada se estira al girar la rueda: hace de muelle (al soltar la manivela, la rueda vuelve) y, si se estira demasiado, se rompe.
 - **Tubos y conos** no tienen agujeros: se apoyan en espigas y se pueden **atar con gomas** entre espigas que los crucen. Con dos gomas, o una goma y una espiga donde se apoyan, quedan fijos (esas gomas ya no rebotan).
 - **Encajar**: las piezas con agujeros se colocan con el agujero de su punta más alta sobre un agujero del panel; si un agujero queda cerca de una espiga, encaja solo (y al dejar una espiga junto a un agujero, la pieza se desliza hasta encajar). Una pieza con una espiga gira sobre ella; con dos no se puede girar.
 - Con la **Pista** se iluminan en rojo las piezas que caerán por no tener espigas.
@@ -90,7 +91,8 @@ En la barra y en la portada: marca verde = superado, naranja = intentado sin sup
 
 Está arriba a la izquierda de la portada. Para cada reto, para toda una dificultad y para la rúbrica se puede **ver** el PDF en pantalla (visor con PDF.js) o **descargarlo**.
 
-- **Fichas** (2 páginas por reto) adaptadas a la edad: Fácil muy visual (material en dibujos, cuatro pasos con iconos, dibujar la predicción, caras); Medio con medidas, pasos, predicción escrita y reflexión; Difícil con planificación por partes, hipótesis con "porque", registro de pruebas, cadena de energía y justificación. Abajo, la parte del docente con una solución dibujada.
+- **Fichas** (2 páginas por reto) adaptadas a la edad: Fácil muy visual (material en dibujos, cuatro pasos con iconos, dibujar la predicción, caras); Medio con medidas, pasos, predicción escrita y reflexión; Difícil con planificación por partes, hipótesis con "porque", registro de pruebas, cadena de energía y justificación. Las fichas son solo para el alumnado: sin coordenadas (solo la pieza y cuántas hay) y, al final, un recuadro «¿Qué he aprendido?» que llena la página.
+- **Soluciones** (un PDF por dificultad, aparte de las fichas): dos retos por página con la solución dibujada, el concepto, las piezas que se ponen o se arreglan y la respuesta a la pregunta.
 - **Rúbricas** (un PDF por dificultad): portada con saberes, competencias específicas y pensamiento computacional del ciclo (LOMLOE, RD 157/2022; Decret 175/2022 en Cataluña) y una tabla por reto con 5 criterios (descomposición, predicción/algoritmo, construcción, depuración y explicación científica) en 4 niveles.
 
 La zona docente pide una clave (en el código solo está su huella SHA-256; pídela al autor). Es una barrera para el alumnado, no una protección fuerte.
