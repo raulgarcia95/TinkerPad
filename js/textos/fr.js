@@ -508,3 +508,5 @@ Object.assign(TK.TEXTOS.fr.fitxa, {
  "giraSol": "on la tourne"
 });
 Object.assign(TK.TEXTOS.fr.ui, {"solucions":"Solutions"});
+
+TK.TEXTOS.fr.rubrica.avis = "Les savoirs, compétences et composantes de la pensée informatique s'appuient sur le programme en vigueur en Espagne, précisé en Catalogne (RD 157/2022 et Decret 175/2022), et sur les orientations du travail « Tinkering a Educació Infantil i Primària ». Ils ne sont pas repris mot pour mot : ils ont été sélectionnés et adaptés au niveau des défis de Tinker Pad. Comparez-les avec le programme de votre région ou de votre pays et avec la programmation de votre établissement.";

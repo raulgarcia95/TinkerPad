@@ -508,3 +508,5 @@ Object.assign(TK.TEXTOS.en.fitxa, {
  "giraSol": "is turned"
 });
 Object.assign(TK.TEXTOS.en.ui, {"solucions":"Solutions"});
+
+TK.TEXTOS.en.rubrica.avis = "The knowledge, competences and computational thinking components are based on the current Spanish curriculum as set out for Catalonia (RD 157/2022 and Decret 175/2022) and on the guidance of the work «Tinkering a Educació Infantil i Primària». They are not quoted literally: they have been selected and adapted to the level of the Tinker Pad challenges. Please check them against the curriculum of your region or country and your school's own planning.";

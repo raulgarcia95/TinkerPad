@@ -511,3 +511,5 @@ Object.assign(TK.TEXTOS.ca.fitxa, {
  "giraSol": "es gira"
 });
 Object.assign(TK.TEXTOS.ca.ui, {"solucions":"Solucions"});
+
+TK.TEXTOS.ca.rubrica.avis = "Els sabers, competències i components del pensament computacional es basen en el currículum vigent a Espanya i concretat a Catalunya (RD 157/2022 i Decret 175/2022) i en les orientacions del treball «Tinkering a Educació Infantil i Primària». No es reflecteixen literalment, sinó que han sigut seleccionats i adaptats al nivell dels reptes de Tinker Pad. Contrasteu-los amb el currículum de la vostra comunitat o país i amb la programació del centre.";

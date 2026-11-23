@@ -508,3 +508,5 @@ Object.assign(TK.TEXTOS.eu.fitxa, {
  "giraSol": "biratu egiten da"
 });
 Object.assign(TK.TEXTOS.eu.ui, {"solucions":"Soluzioak"});
+
+TK.TEXTOS.eu.rubrica.avis = "Jakintzak, gaitasunak eta pentsamendu konputazionalaren osagaiak Espainian indarrean dagoen eta Katalunian zehaztutako curriculumean (RD 157/2022 eta Decret 175/2022) eta «Tinkering a Educació Infantil i Primària» lanaren orientabideetan oinarritzen dira. Ez dira hitzez hitz jasotzen; Tinker Paden erronken mailara hautatu eta egokitu dira. Alderatu itzazue zuen erkidegoko edo herrialdeko curriculumarekin eta ikastetxearen programazioarekin.";

@@ -603,6 +603,16 @@
     doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.text(RB(dif, "edat"), W - M - 35, 36.8, { align: "center" });
     y += 7;
     y = paragraf(doc, RB(dif, "intro"), M, y, W - 2 * M, 10);
+    // Advertencia sobre el origen curricular (recuadro suave antes de los saberes)
+    {
+      const ample = W - 2 * M - 10, mida = 8;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(mida);
+      const alt = doc.splitTextToSize(RB(dif, "avis"), ample).length * mida * 0.42 + 3.2;
+      doc.setFillColor(...clar(c, 0.9)); doc.roundedRect(M, y, W - 2 * M, alt, 2, 2, "F");
+      doc.setFillColor(...c); doc.rect(M, y, 1.4, alt, "F");
+      paragraf(doc, RB(dif, "avis"), M + 5, y + 3.6, ample, mida, COLOR.suau);
+      y += alt + 2;
+    }
     const col = (W - 2 * M - 8) / 2;
     let y1 = titol(doc, RB(dif, "sabersT"), y + 3, 11);
     RB(dif, "sabers").split("|").forEach((s) => { y1 = paragraf(doc, "• " + s, M, y1, col, 9); });
