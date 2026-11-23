@@ -490,9 +490,9 @@ Object.assign(TK.TEXTOS.fr.ui, {
  "netejaConfirma": "Touche encore pour enlever toutes les pièces et recommencer",
  "netejaFet": "Panneau vidé : recommence !",
  "faltaGoma": "Pose d'abord deux chevilles (ce peuvent être celles d'une latte ou d'un bloc) : l'élastique s'y accrochera",
- "tocaGoma1": "Touche la cheville où accrocher l'élastique (ou le manche d'une pince)",
+ "tocaGoma1": "Touche la cheville où accrocher l'élastique (ou la mâchoire d'une pince fixée à une cheville)",
  "tocaGoma2": "Touche maintenant l'autre cheville",
- "noGoma": "L'élastique ne s'accroche qu'aux chevilles (même celles qui traversent les lattes et les blocs) ou au manche d'une pince"
+ "noGoma": "L'élastique ne s'accroche qu'aux chevilles (même celles qui traversent les lattes et les blocs) ou dans la mâchoire d'une pince fixée à une cheville"
 });
 
 TK.TEXTOS.fr.ui.giraDispositiu = "Tourne l'appareil : Tinker Pad se joue à l'horizontale";

@@ -490,9 +490,9 @@ Object.assign(TK.TEXTOS.en.ui, {
  "netejaConfirma": "Tap again to remove every piece and start again",
  "netejaFet": "Board cleared: start again!",
  "faltaGoma": "First place two pegs (they can also be the pegs of a plank or a block): the band will hook onto them",
- "tocaGoma1": "Tap the peg where the band will hook (or the handle of a clothespin)",
+ "tocaGoma1": "Tap the peg where the band will hook (or the jaws of a clothespin clipped to a peg)",
  "tocaGoma2": "Now tap the other peg",
- "noGoma": "A band only hooks onto pegs (also the ones going through planks and blocks) or onto a clothespin handle"
+ "noGoma": "A band only hooks onto pegs (also the ones going through planks and blocks) or into the jaws of a clothespin clipped to a peg"
 });
 
 TK.TEXTOS.en.ui.giraDispositiu = "Turn your device: Tinker Pad is played in landscape";

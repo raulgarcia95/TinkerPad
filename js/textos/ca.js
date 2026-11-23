@@ -493,9 +493,9 @@ Object.assign(TK.TEXTOS.ca.ui, {
  "netejaConfirma": "Toca un altre cop per treure totes les peces i començar de nou",
  "netejaFet": "Tauler net: torna a començar!",
  "faltaGoma": "Primer posa dues espigues (també poden ser les d'un llistó o un bloc): la goma s'hi enganxarà",
- "tocaGoma1": "Toca l'espiga on enganxaràs la goma (o el mànec d'una pinça)",
+ "tocaGoma1": "Toca l'espiga on enganxaràs la goma (o la boca d'una pinça clavada en una espiga)",
  "tocaGoma2": "Ara toca l'altra espiga",
- "noGoma": "La goma només s'enganxa a espigues (també les que travessen llistons i blocs) o al mànec d'una pinça"
+ "noGoma": "La goma només s'enganxa a espigues (també les que travessen llistons i blocs) o a la boca d'una pinça clavada en una espiga"
 });
 
 TK.TEXTOS.ca.ui.giraDispositiu = "Gira el dispositiu: Tinker Pad es juga en horitzontal";

@@ -426,9 +426,51 @@
     medir();
     const estados = new Map(); // handle del collider -> { lado, toca }
     const f = { contactos: [], estirado: 0, a, b, ignorar: new Set() }; // ignorar: cuerpos donde está enganchada
+    /*
+     * Un extremo se suelta (la pinza que lo sujetaba se ha abierto): la goma se
+     * encoge de golpe y ese extremo sale disparado hacia la espiga del otro.
+     * Es un cuerpo ligero (la masa de la goma) que empuja lo que encuentra.
+     */
+    let vuelo = null;
+    f.soltar = (lado) => {
+      if (vuelo || f.rota || f.recogida) return;
+      const p0 = lado === "a" ? a : b, r = 5 * S;
+      const rb = ctx.mundo.createRigidBody(R().RigidBodyDesc.dynamic().setTranslation(p0.x, p0.y)
+        .setGravityScale(0).setCcdEnabled(true).lockRotations());
+      ctx.mundo.createCollider(R().ColliderDesc.ball(r).setDensity(TK.GOMA.MB / (Math.PI * r * r))
+        .setRestitution(0.3).setFriction(0.2).setCollisionGroups((0x0010 << 16) | 0x0009), rb);
+      if (lado === "a") moverA = null; else moverB = null;
+      vuelo = { lado, rb };
+      TK.audio.boing();
+    };
+    const VMAX = 22; // unidades/s: lo más rápido que vuela el extremo suelto
     f.paso = () => {
       const dt = ctx.mundo.timestep;
-      if (f.rota) return;
+      if (f.rota || f.recogida) return;
+      if (vuelo) {
+        const t = vuelo.rb.translation(), libre = { x: t.x, y: t.y };
+        if (vuelo.lado === "a") a = f.a = libre; else b = f.b = libre;
+        medir();
+        const otro = vuelo.lado === "a" ? b : a;
+        // Ha llegado a la otra espiga: la goma se queda enrollada en ella
+        if (d < 0.08) {
+          ctx.mundo.removeRigidBody(vuelo.rb);
+          vuelo = null;
+          f.recogida = true;
+          f.a = { x: otro.x - 0.03, y: otro.y };
+          f.b = { x: otro.x + 0.03, y: otro.y };
+          f.contactos = [];
+          return;
+        }
+        // La goma tira del extremo hacia la otra espiga
+        const dir = vuelo.lado === "a" ? u : { x: -u.x, y: -u.y };
+        const J = K * d * dt;
+        vuelo.rb.applyImpulse({ x: dir.x * J, y: dir.y * J }, true);
+        const v = vuelo.rb.linvel(), vm = Math.hypot(v.x, v.y);
+        if (vm > VMAX) vuelo.rb.setLinvel({ x: (v.x / vm) * VMAX, y: (v.y / vm) * VMAX }, true);
+        f.contactos = [];
+        return;
+      }
       if (moverA || moverB) {
         if (moverA) a = f.a = moverA();
         if (moverB) b = f.b = moverB();
@@ -584,7 +626,12 @@
       return m;
     });
     const L0 = TK.GOMA.L0 * S * mida;
+    // za / zb: cuánto sube cada extremo (enganchado en una espiga que atraviesa una
+    // pieza, la goma va por encima de esa pieza, no por debajo)
+    const out = { raiz, dibujar, za: 0, zb: 0 };
     function dibujar(a, b, contactos = []) {
+      const za = out.za, zb = out.zb, abx = b.x - a.x, aby = b.y - a.y, ab2 = abx * abx + aby * aby || 1;
+      const zEn = (x, y) => Z + za + (zb - za) * Math.max(0, Math.min(1, ((x - a.x) * abx + (y - a.y) * aby) / ab2));
       const nodos = [a, ...contactos, b];
       let largo = 0;
       for (let k = 1; k < nodos.length; k++) largo += Math.hypot(nodos[k].x - nodos[k - 1].x, nodos[k].y - nodos[k - 1].y);
@@ -611,17 +658,17 @@
           const x1 = puntos[i - 1].x + nx * w1 * lado, y1 = puntos[i - 1].y + ny * w1 * lado;
           const x2 = puntos[i].x + nx * w2 * lado, y2 = puntos[i].y + ny * w2 * lado;
           const ex = x2 - x1, ey = y2 - y1;
-          m.position.set((x1 + x2) / 2, (y1 + y2) / 2, Z);
+          m.position.set((x1 + x2) / 2, (y1 + y2) / 2, zEn((x1 + x2) / 2, (y1 + y2) / 2));
           m.scale.set(grosor, Math.max(Math.hypot(ex, ey), 1e-4), grosor);
           m.rotation.set(0, 0, Math.atan2(-ex, ey));
           m.visible = true;
         }
       }
       for (; k < tramos.length; k++) tramos[k].visible = false;
-      aros[0].position.x = a.x; aros[0].position.y = a.y;
-      aros[1].position.x = b.x; aros[1].position.y = b.y;
+      aros[0].position.set(a.x, a.y, Z + za);
+      aros[1].position.set(b.x, b.y, Z + zb);
     }
-    return { raiz, dibujar };
+    return out;
   }
   TK.mallaGoma = mallaGoma;
 
@@ -734,9 +781,11 @@
         let col = null, boca = null;
         const i = piezaSimple(p, ctx, mueve ? "dinamico" : "fijo", (rb) => {
           if (p.clavada) {
+            // Clavada en una espiga por el muelle: la boca (lo que se abre y cierra,
+            // donde puede ir una goma) y el mango, que es lo que hay que golpear
             boca = caja(ctx, rb, 34, 18, "madera", { x: 3 });
             col = caja(ctx, rb, 50, 18, "madera", { x: 45 });
-            etiquetar(ctx, boca, "boca");
+            etiquetar(ctx, col, "mango");
           } else {
             col = caja(ctx, rb, 84, 18, "madera", { x: 28 });
             etiquetar(ctx, col, p.goma ? "gatillo" : "mossega");
@@ -751,18 +800,18 @@
           union = ctx.mundo.createImpulseJoint(R().JointData.fixed({ x: c * dx + s * dy, y: -s * dx + c * dy }, rb0.rotation() - ha, { x: 0, y: 0 }, 0), hostRb, rb0, true);
           union.setContactsEnabled(false);
         }
-        // Una bola pesada que toca la boca la abre
+        // Una bola pesada que golpea el mango abre la boca (el corcho no):
+        // si la boca sujetaba una goma, la suelta
         let abierta = 0, soltada = false;
         i.tocar = (otro) => {
           if (p.goma || soltada || abierta || otro.mass() < TK.GOMA.GATILLO) return;
           const t = rb0.translation(), b = otro.translation(), a = rb0.rotation();
           const lx = Math.cos(a) * (b.x - t.x) + Math.sin(a) * (b.y - t.y); // a lo largo de la pinza (0 = punta)
           if (p.clavada) {
-            if (lx > 0.02) return; // solo si llega de cara a la boca
             abierta = 60;
-            boca.setSensor(true);
             m.abrir(1);
             TK.audio.clic();
+            if (ctx.pinzaOberta) ctx.pinzaOberta(p);
           } else if (lx < 0.22) {
             soltada = true;
             if (union) { ctx.mundo.removeImpulseJoint(union, true); union = null; }
@@ -773,7 +822,7 @@
           }
         };
         i.paso = () => {
-          if (abierta && --abierta === 0) { boca.setSensor(false); m.abrir(0); }
+          if (abierta && --abierta === 0) m.abrir(0);
         };
         if (p.goma) {
           const rb = i.cuerpos[0];
@@ -868,7 +917,7 @@
     },
 
     /* Goma elástica negra enganchada entre dos puntos: espigas, agujeros de
-       un listón o un bloque, o el mango de una pinza (p.a y p.b son las
+       un listón o un bloque, o la boca de una pinza clavada (p.a y p.b son las
        piezas; p.pa y p.pb, los puntos en px; engancha: "goma"). Ver TK.GOMA.
        Con p.tensor (una pinza apoyada en una espiga) es un tirachinas. */
     goma: {
@@ -892,10 +941,11 @@
           const i = instancia(p, ctx, [rb, t.bolsa], grupo(hijos), () => { t.sync(); dibujo.dibujar(a, b, [t.punto()]); });
           i.paso = t.paso;
           i.soltar = t.soltar;
+          i.dibujo = dibujo;
           return i;
         }
         // Atada alrededor de un tubo o un cono (p.lligam): lo sujeta, no rebota
-        if (p.lligam) return instancia(p, ctx, [rb], grupo(hijos), () => dibujo.dibujar(a, b, []));
+        if (p.lligam) return Object.assign(instancia(p, ctx, [rb], grupo(hijos), () => dibujo.dibujar(a, b, [])), { dibujo });
         // Si la pieza donde está enganchada se mueve, el extremo la sigue
         // (la biela de un engranaje se mueve con la rueda, no con su eje)
         const cuerpoDe = (host, l) => (ctx.jugando && host && host.inst ? (host.inst.cuerpoDe ? host.inst.cuerpoDe(l) : host.inst.cuerpos[0]) : null);
@@ -912,6 +962,8 @@
           dibujo.dibujar(fis.a, fis.b, fis.contactos);
         });
         i.paso = fis.paso;
+        i.soltarDe = (lado) => fis.soltar(lado); // la pinza que sujetaba ese extremo se ha abierto
+        i.dibujo = dibujo;
         return i;
       },
     },

@@ -490,9 +490,9 @@ Object.assign(TK.TEXTOS.gl.ui, {
  "netejaConfirma": "Toca outra vez para quitar todas as pezas e comezar de novo",
  "netejaFet": "Taboleiro limpo: volve comezar!",
  "faltaGoma": "Primeiro pon dúas espigas (tamén poden ser as dun listón ou un bloque): a goma enganchará nelas",
- "tocaGoma1": "Toca a espiga onde engancharás a goma (ou o mango dunha pinza)",
+ "tocaGoma1": "Toca a espiga onde engancharás a goma (ou a boca dunha pinza suxeita a unha espiga)",
  "tocaGoma2": "Agora toca a outra espiga",
- "noGoma": "A goma só se engancha en espigas (tamén as que atravesan listóns e bloques) ou no mango dunha pinza"
+ "noGoma": "A goma só se engancha en espigas (tamén as que atravesan listóns e bloques) ou na boca dunha pinza suxeita a unha espiga"
 });
 
 TK.TEXTOS.gl.ui.giraDispositiu = "Xira o dispositivo: Tinker Pad xógase en horizontal";

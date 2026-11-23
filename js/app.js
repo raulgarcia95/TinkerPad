@@ -30,8 +30,9 @@
      La rampa cóncava y los bloques son demasiado gruesos: no se pueden pinzar.
      Además, gomas (gatillo) y espigas, donde la pinza se clava por el muelle. */
   const AGARRE = { liston: "puntes", tubo: "boques", cono: "boca-alta" };
-  // Además de las espigas, una goma se puede enganchar al mango de una pinza
-  const MANGO_PINZA = [[64, 0]];
+  // Además de las espigas, una goma se puede enganchar en la boca de una pinza clavada
+  // (la boca de una pinza clavada en una espiga: lo que se abre y se cierra)
+  const BOCA_PINZA = [[6, 0]];
   const SOLAPE = 0.025; // las piezas pueden tocarse, pero no meterse una en otra más de 2,5 px
   const TOL_FORAT = 4;  // una espiga está "dentro" de un agujero de una pieza si sus centros distan ≤ 4 px
   const MUELLE = 20;    // px de la punta de la pinza a su muelle (donde se clava en una espiga)
@@ -361,6 +362,14 @@
 
   // ctx.mundo: mundo de Rapier; ctx.mapa: handle de collider -> {pieza, etiqueta}
   const ctx = { mundo: null, mapa: new Map() };
+  /** Una pinza clavada se ha abierto: las gomas que sujetaba por la boca salen disparadas. */
+  ctx.pinzaOberta = (p) => {
+    for (const g of estado.piezas) {
+      if (g.tipo !== "goma" || !g.inst || !g.inst.soltarDe) continue;
+      if (g.a === p) g.inst.soltarDe("a");
+      else if (g.b === p) g.inst.soltarDe("b");
+    }
+  };
   let eventos = null, acumulado = 0, ultimaCampana = -1e9, pasosSimulados = 0, paresEngranaje = [], paresCadena = [];
 
   /* ================= Mundo físico ================= */
@@ -513,8 +522,8 @@
       if ((yo.etiqueta === "campana" || yo.etiqueta === "meta") && !cae) alcanzarObjetivo(yo.pieza, yo.etiqueta);
       // Pinza-gatillo: se suelta si le cae algo que pese bastante
       if (yo.etiqueta === "gatillo" && yo.pieza.disparar && otro.mass() >= TK.GOMA.GATILLO) yo.pieza.disparar();
-      // Pinza: una bola que pese le abre la boca (el corcho no)
-      if ((yo.etiqueta === "boca" || yo.etiqueta === "mossega") && yo.pieza.tocar && otro.numColliders() === 1 && otro.collider(0).shapeType() === R.ShapeType.Ball)
+      // Pinza: una bola que pese, al golpear el mango, le abre la boca (el corcho no)
+      if ((yo.etiqueta === "mango" || yo.etiqueta === "mossega") && yo.pieza.tocar && otro.numColliders() === 1 && otro.collider(0).shapeType() === R.ShapeType.Ball)
         yo.pieza.tocar(otro);
     }
     if (c1.isSensor() || c2.isSensor()) return;
@@ -643,11 +652,41 @@
       acumulado += dt;
       while (acumulado >= PASO) { pasoFisica(); acumulado -= PASO; }
     }
+    aplicarAlturas();
     for (const rec of estado.piezas) rec.inst.sync();
     actualizarHalos();
     animarConfeti(dt);
     renderer.render(escena, camara);
     requestAnimationFrame(bucle);
+  }
+
+  /* Pinzas y gomas en una espiga que atraviesa una pieza (listón, bloque, rampa…):
+     se enganchan por arriba, sobre la pieza, nunca por debajo. */
+  const TOPE = {}, cajaTope = new T.Box3();
+  /** Altura (z) de la cara de arriba de una pieza. */
+  function topeDe(q) {
+    if (TOPE[q.tipo] === undefined) TOPE[q.tipo] = cajaTope.setFromObject(q.inst.raiz).max.z;
+    return TOPE[q.tipo];
+  }
+  /** Lo más alto de las piezas que atraviesa la espiga e (0 si está suelta en el panel). */
+  function sobreEspiga(e) {
+    let z = 0;
+    if (!esEspiga(e)) return z;
+    for (const q of estado.piezas) if (q !== e && q.inst && !esEspiga(q) && enForat(e, q)) z = Math.max(z, topeDe(q));
+    return z;
+  }
+  const PINZA_BAJO = TK.Z - 0.13; // cara de abajo de la pinza a su altura normal
+  const subePinza = (p) => (p.clavada ? Math.max(0, sobreEspiga(p.host) + 0.005 - PINZA_BAJO) : 0);
+  function aplicarAlturas() {
+    for (const r of estado.piezas) {
+      if (!r.inst) continue;
+      if (r.tipo === "pinza") r.inst.raiz.position.z = subePinza(r);
+      else if (r.tipo === "goma" && r.inst.dibujo) {
+        const z = (h) => (!h ? 0 : h.tipo === "pinza" ? subePinza(h) : Math.max(0, sobreEspiga(h) + 0.03 - TK.Z));
+        r.inst.dibujo.za = z(r.a);
+        r.inst.dibujo.zb = z(r.b);
+      }
+    }
   }
 
   const cajaHalo = new T.Box3();
@@ -941,10 +980,10 @@
     const out = [];
     for (const r of estado.piezas) {
       if (!r.inst) continue;
-      // Una goma s'enganxa a espigues (també les que travessen un llistó o un bloc) o al mànec d'una pinça;
-      // un forat buit no la pot aguantar
+      // Una goma s'enganxa a espigues (també les que travessen un llistó o un bloc) o a la boca d'una
+      // pinça clavada en una espiga (la part que s'obre i es tanca); un forat buit no la pot aguantar
       const b = bielaDe(r);
-      const locales = esEspiga(r) ? [[0, 0]] : b ? [[b.x, b.y]] : r.tipo === "pinza" && !r.goma ? MANGO_PINZA : null;
+      const locales = esEspiga(r) ? [[0, 0]] : b ? [[b.x, b.y]] : r.tipo === "pinza" && r.clavada && !r.goma ? BOCA_PINZA : null;
       if (!locales) continue;
       for (const [x, y] of locales) out.push({ host: r, local: { x, y }, ...aPanel(r, { x, y }) });
     }
@@ -1167,7 +1206,7 @@
           if (!tiraValida(r.goma, r.host)) { quitarRegistro(r); avisar(TK.t("gomaSaltada"), "goma"); continue; }
           actualizarPieza(r.goma);
         }
-        actualizarDependientes(r); // gomas enganchadas al mango de la pinza
+        actualizarDependientes(r); // gomas enganchadas en la boca de la pinza
       }
     }
   }

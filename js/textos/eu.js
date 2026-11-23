@@ -490,9 +490,9 @@ Object.assign(TK.TEXTOS.eu.ui, {
  "netejaConfirma": "Ukitu berriro pieza guztiak kendu eta berriro hasteko",
  "netejaFet": "Panela garbi: hasi berriro!",
  "faltaGoma": "Lehenik jarri bi ziri (ohol edo bloke batekoak ere izan daitezke): goma bertan lotuko da",
- "tocaGoma1": "Ukitu goma lotuko duzun ziria (edo pintza baten kirtena)",
+ "tocaGoma1": "Ukitu goma lotuko duzun ziria (edo zirian dagoen pintza baten ahoa)",
  "tocaGoma2": "Orain ukitu beste ziria",
- "noGoma": "Goma ziriei bakarrik lotzen zaie (oholak eta blokeak zeharkatzen dituztenei ere) edo pintza baten kirtenari"
+ "noGoma": "Goma ziriei bakarrik lotzen zaie (oholak eta blokeak zeharkatzen dituztenei ere) edo zirian dagoen pintza baten ahoari"
 });
 
 TK.TEXTOS.eu.ui.giraDispositiu = "Biratu gailua: Tinker Pad horizontalean jokatzen da";
